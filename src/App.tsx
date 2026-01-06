@@ -1,31 +1,76 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Baby, Calendar } from "lucide-react";
+import { Parent, ParentBenefits, MonthlyData, TabType } from "./types";
 import {
-  Users,
-  User,
-  Briefcase,
-  GraduationCap,
-  Info,
-  Calendar,
-  TrendingUp,
-  Baby,
-} from "lucide-react";
-
-interface Parent {
-  id: number;
-  name: string;
-  type: "employed" | "student";
-  monthlySalary: number;
-  employerTopUp: number;
-  daysToTake: number;
-  daysPerWeek: number;
-  startDate: string;
-  endDate: string;
-}
+  calculateParentBenefits,
+  getMonthlyIncomeForParent,
+} from "./utils/calculations";
+import { EXAMPLES, TOTAL_PARENTAL_DAYS, ExampleKey } from "./constants";
+import ParentCard from "./components/ParentCard";
+import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
+import Summary from "./components/Summary";
+import ExamplesTab from "./components/ExamplesTab";
+import InfoTooltip from "./components/InfoTooltip";
+import InfoCarousel from "./components/InfoCarousel";
+import InfoSidebar from "./components/InfoSidebar";
+import ExportButtons from "./components/ExportButtons";
+import LanguageSwitcher from "./components/LanguageSwitcher";
+import MunicipalitySelector from "./components/MunicipalitySelector";
+import OnboardingGuide from "./components/OnboardingGuide";
+import FeedbackFooter from "./components/FeedbackFooter";
+import { useLanguage } from "./i18n/LanguageContext";
 
 const ForaldrapengenCalculator = () => {
+  const { t, language } = useLanguage();
+  const [activeTab, setActiveTab] = useState<TabType>("calculator");
   const [numParents, setNumParents] = useState<1 | 2>(2);
-  const [birthDate, setBirthDate] = useState<string>("2025-03-01");
-  const [doubleDays, setDoubleDays] = useState<number>(30);
+
+  // Set birth date to today's date by default
+  const today = new Date().toISOString().split("T")[0];
+  const [birthDate, setBirthDate] = useState<string>(today);
+
+  const [selectedInfoCard, setSelectedInfoCard] = useState<string>("sgi");
+
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Municipality and tax settings
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
+  const [taxRate, setTaxRate] = useState<number>(0.3); // 30% default
+  const [isChurchMember, setIsChurchMember] = useState<boolean>(false);
+
+  // Helper functions for date calculations
+  const getTodayDate = () => {
+    return new Date().toISOString().split("T")[0];
+  };
+
+  const getDateAfterDays = (
+    startDate: string,
+    days: number,
+    daysPerWeek: number
+  ) => {
+    try {
+      const start = new Date(startDate);
+      if (isNaN(start.getTime())) {
+        return getTodayDate(); // Fallback to today if invalid
+      }
+      const totalDays = Math.ceil((days * 7) / daysPerWeek);
+      start.setDate(start.getDate() + totalDays);
+      return start.toISOString().split("T")[0];
+    } catch (error) {
+      console.error("Error calculating date:", error);
+      return getTodayDate();
+    }
+  };
+
+  // Calculate initial dates once
+  const initialToday = getTodayDate();
+  const initialEndDate1 = getDateAfterDays(initialToday, 240, 5);
+  const initialStartDate2Date = new Date(initialEndDate1);
+  initialStartDate2Date.setDate(initialStartDate2Date.getDate() + 1);
+  const initialStartDate2 = initialStartDate2Date.toISOString().split("T")[0];
+  const initialEndDate2 = getDateAfterDays(initialStartDate2, 240, 5);
+
   const [parents, setParents] = useState<Parent[]>([
     {
       id: 1,
@@ -35,8 +80,8 @@ const ForaldrapengenCalculator = () => {
       employerTopUp: 10,
       daysToTake: 240,
       daysPerWeek: 5,
-      startDate: "2025-03-01",
-      endDate: "2026-01-15",
+      startDate: initialToday,
+      endDate: initialEndDate1,
     },
     {
       id: 2,
@@ -46,116 +91,200 @@ const ForaldrapengenCalculator = () => {
       employerTopUp: 10,
       daysToTake: 240,
       daysPerWeek: 5,
-      startDate: "2026-01-16",
-      endDate: "2026-11-30",
+      startDate: initialStartDate2,
+      endDate: initialEndDate2,
     },
   ]);
 
-  const [showInfo, setShowInfo] = useState<boolean>(false);
-
-  const calculateSGI = (monthlySalary: number): number => {
-    const yearlyIncome = monthlySalary * 12;
-    return yearlyIncome * 0.97;
+  const handleMunicipalityChange = (
+    municipality: string,
+    newTaxRate: number
+  ) => {
+    setSelectedMunicipality(municipality);
+    setTaxRate(newTaxRate);
   };
 
-  const calculateDailyBenefit = (sgi: number): number => {
-    const daily = (sgi * 0.8) / 365;
-    return Math.min(Math.max(daily, 250), 1250);
-  };
+  // Check if user should see onboarding
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+    if (!hasSeenOnboarding) {
+      // Show onboarding after a short delay for better UX
+      setTimeout(() => {
+        setShowOnboarding(true);
+      }, 500);
+    }
+  }, []);
 
-  const calculateTax = (
-    dailyBenefit: number,
-    hasEmployerIncome: boolean
-  ): number => {
-    const taxRate = hasEmployerIncome ? 0.3 : 0.25;
-    return dailyBenefit * taxRate;
-  };
+  // Beräkna resultat för alla föräldrar (nu med taxRate)
+  const parentResults: ParentBenefits[] = useMemo(() => {
+    return parents
+      .slice(0, numParents)
+      .map((parent) => calculateParentBenefits(parent, taxRate));
+  }, [parents, numParents, taxRate]);
 
-  const getDaysBetweenDates = (startDate: string, endDate: string): number => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
+  // Beräkna totala dagar och återstående
+  const totalDaysTaken = useMemo(() => {
+    return parents
+      .slice(0, numParents)
+      .reduce((sum, p) => sum + p.daysToTake, 0);
+  }, [parents, numParents]);
 
-  const calculateParentBenefits = (parent: Parent) => {
-    const sgi = calculateSGI(parent.monthlySalary);
-    const dailyBenefit = calculateDailyBenefit(sgi);
+  // Beräkna automatiskt dubbeldagar baserat på överlappande perioder
+  const calculatedDoubleDays = useMemo(() => {
+    if (numParents !== 2) return 0;
 
-    const reservedDays = 90;
-    const transferableDays = Math.max(0, parent.daysToTake - reservedDays);
+    const parent1 = parents[0];
+    const parent2 = parents[1];
 
-    const highLevelDays = Math.min(parent.daysToTake, 390);
-    const lowLevelDays = Math.max(0, parent.daysToTake - 390);
+    // Parse dates
+    const start1 = new Date(parent1.startDate);
+    const end1 = new Date(parent1.endDate);
+    const start2 = new Date(parent2.startDate);
+    const end2 = new Date(parent2.endDate);
 
-    const fkBenefitBeforeTax =
-      highLevelDays * dailyBenefit + lowLevelDays * 180;
+    // Check if periods overlap
+    const overlapStart = new Date(Math.max(start1.getTime(), start2.getTime()));
+    const overlapEnd = new Date(Math.min(end1.getTime(), end2.getTime()));
 
-    const tax = calculateTax(dailyBenefit, parent.type === "employed");
-    const fkBenefitAfterTax =
-      highLevelDays * (dailyBenefit - tax) + lowLevelDays * (180 - 180 * 0.25);
+    // If no overlap, return 0
+    if (overlapStart > overlapEnd) return 0;
 
-    const employerTopUpAmount =
-      parent.type === "employed"
-        ? (highLevelDays * dailyBenefit * parent.employerTopUp) / 100
-        : 0;
+    // Calculate overlapping days
+    // We need to count calendar days where BOTH parents are taking leave
+    let overlapDays = 0;
+    const current = new Date(overlapStart);
 
-    const totalBenefitBeforeTax = fkBenefitBeforeTax + employerTopUpAmount;
-    const totalBenefitAfterTax = fkBenefitAfterTax + employerTopUpAmount;
+    while (current <= overlapEnd) {
+      // Check if this day falls within both parents' leave periods
+      // considering their daysPerWeek
+      const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
 
-    const totalDays = getDaysBetweenDates(parent.startDate, parent.endDate);
-    const weeksNeeded = Math.ceil(totalDays / 7);
+      // Simplified: assume they take weekdays if daysPerWeek < 7
+      const parent1TakesThisDay =
+        parent1.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
+      const parent2TakesThisDay =
+        parent2.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
 
-    const avgDailyBenefit =
-      parent.daysToTake > 0 ? totalBenefitAfterTax / parent.daysToTake : 0;
+      if (parent1TakesThisDay && parent2TakesThisDay) {
+        overlapDays++;
+      }
 
-    return {
-      sgi,
-      dailyBenefit,
-      dailyBenefitAfterTax: dailyBenefit - tax,
-      highLevelDays,
-      lowLevelDays,
-      reservedDays,
-      transferableDays,
-      fkBenefitBeforeTax,
-      fkBenefitAfterTax,
-      employerTopUpAmount,
-      totalBenefitBeforeTax,
-      totalBenefitAfterTax,
-      weeksNeeded,
-      monthsNeeded: weeksNeeded / 4.33,
-      avgDailyBenefit,
-      tax,
-    };
-  };
+      current.setDate(current.getDate() + 1);
+    }
 
+    // Adjust based on actual days per week
+    const adjustmentFactor =
+      Math.min(parent1.daysPerWeek, parent2.daysPerWeek) / 7;
+    return Math.round(overlapDays * adjustmentFactor);
+  }, [parents, numParents]);
+
+  const daysRemaining =
+    TOTAL_PARENTAL_DAYS - totalDaysTaken - calculatedDoubleDays;
+
+  // Beräkna totala ersättningar
+  const { totalBenefitBeforeTax, totalBenefitAfterTax } = useMemo(() => {
+    const beforeTax = parentResults.reduce(
+      (sum, r) => sum + r.totalBenefitBeforeTax,
+      0
+    );
+    const afterTax = parentResults.reduce(
+      (sum, r) => sum + r.totalBenefitAfterTax,
+      0
+    );
+    return { totalBenefitBeforeTax: beforeTax, totalBenefitAfterTax: afterTax };
+  }, [parentResults]);
+
+  // Beräkna månadsinkomst
+  const getMonthlyData = useMemo((): MonthlyData[] => {
+    const allDates = parents
+      .slice(0, numParents)
+      .flatMap((p) => [new Date(p.startDate), new Date(p.endDate)]);
+
+    if (allDates.length === 0) return [];
+
+    const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
+    const monthlyData: MonthlyData[] = [];
+    const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+
+    while (current <= maxDate) {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+
+      const parent1Data = getMonthlyIncomeForParent(
+        parents[0],
+        parentResults[0],
+        year,
+        month
+      );
+
+      let parent2Data = { total: 0, days: 0 };
+      if (numParents === 2 && parentResults[1]) {
+        parent2Data = getMonthlyIncomeForParent(
+          parents[1],
+          parentResults[1],
+          year,
+          month
+        );
+      }
+
+      monthlyData.push({
+        month: `${year}-${String(month + 1).padStart(2, "0")}`,
+        parent1Total: parent1Data.total,
+        parent1Days: parent1Data.days,
+        parent2Total: parent2Data.total,
+        parent2Days: parent2Data.days,
+      });
+
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return monthlyData;
+  }, [parents, parentResults, numParents]);
+
+  // Uppdatera förälder
   const updateParent = (id: number, field: keyof Parent, value: any) => {
     setParents((prev) =>
       prev.map((p) => {
         if (p.id === id) {
-          const updated = { ...p, [field]: value };
+          let validatedValue = value;
 
-          if (
-            field === "startDate" &&
-            updated.daysToTake &&
-            updated.daysPerWeek
-          ) {
-            const weeksNeeded = Math.ceil(
-              updated.daysToTake / updated.daysPerWeek
-            );
-            const start = new Date(value);
-            start.setDate(start.getDate() + weeksNeeded * 7);
-            updated.endDate = start.toISOString().split("T")[0];
+          // Validate daysToTake - cannot exceed 480
+          if (field === "daysToTake") {
+            validatedValue = Math.max(0, Math.min(480, Number(value) || 0));
           }
 
-          if (field === "daysToTake" || field === "daysPerWeek") {
-            const weeksNeeded = Math.ceil(
-              updated.daysToTake / updated.daysPerWeek
-            );
-            const start = new Date(updated.startDate);
-            start.setDate(start.getDate() + weeksNeeded * 7);
-            updated.endDate = start.toISOString().split("T")[0];
+          // Validate daysPerWeek - must be between 1 and 7
+          if (field === "daysPerWeek") {
+            validatedValue = Math.max(1, Math.min(7, Number(value) || 5));
+          }
+
+          const updated = { ...p, [field]: validatedValue };
+
+          // Auto-beräkna slutdatum baserat på start, dagar och dagar/vecka
+          if (
+            field === "startDate" ||
+            field === "daysToTake" ||
+            field === "daysPerWeek"
+          ) {
+            try {
+              const start = new Date(updated.startDate);
+              if (
+                !isNaN(start.getTime()) &&
+                updated.daysToTake > 0 &&
+                updated.daysPerWeek > 0
+              ) {
+                const weeksNeeded = Math.ceil(
+                  updated.daysToTake / updated.daysPerWeek
+                );
+                start.setDate(start.getDate() + weeksNeeded * 7);
+                updated.endDate = start.toISOString().split("T")[0];
+              }
+            } catch (error) {
+              console.error("Error calculating end date:", error);
+              // Keep existing endDate if calculation fails
+            }
           }
 
           return updated;
@@ -165,586 +294,453 @@ const ForaldrapengenCalculator = () => {
     );
   };
 
-  const totalDaysTaken = useMemo(() => {
-    const individualDays = parents
-      .slice(0, numParents)
-      .reduce((sum, p) => sum + p.daysToTake, 0);
-    return individualDays - doubleDays;
-  }, [parents, numParents, doubleDays]);
-
-  const daysRemaining = 480 - totalDaysTaken;
-
-  const parentResults = useMemo(() => {
-    return parents.slice(0, numParents).map((p) => calculateParentBenefits(p));
-  }, [parents, numParents]);
-
-  const totalBenefitBeforeTax = parentResults.reduce(
-    (sum, r) => sum + r.totalBenefitBeforeTax,
-    0
-  );
-  const totalBenefitAfterTax = parentResults.reduce(
-    (sum, r) => sum + r.totalBenefitAfterTax,
-    0
-  );
-
-  const getMonthlyData = useMemo(() => {
-    const birth = new Date(birthDate);
-    const monthlyData: any[] = [];
-
-    const allDates = parents
-      .slice(0, numParents)
-      .flatMap((p) => [new Date(p.startDate), new Date(p.endDate)]);
-
-    const minDate = new Date(
-      Math.min(birth.getTime(), ...allDates.map((d) => d.getTime()))
-    );
-    const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
-
-    let currentDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-    const endDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 1);
-
-    while (currentDate < endDate && monthlyData.length < 36) {
-      const monthStart = new Date(currentDate);
-      const monthEnd = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-        0
-      );
-
-      const monthData = {
-        month: currentDate.toLocaleDateString("sv-SE", {
-          year: "numeric",
-          month: "short",
-        }),
-        parent1Total: 0,
-        parent2Total: 0,
-        parent1Days: 0,
-        parent2Days: 0,
-      };
-
-      parents.slice(0, numParents).forEach((p, idx) => {
-        const parentStart = new Date(p.startDate);
-        const parentEnd = new Date(p.endDate);
-        const result = parentResults[idx];
-
-        const isOnLeave = parentStart <= monthEnd && parentEnd >= monthStart;
-
-        if (isOnLeave) {
-          const overlapStart = new Date(
-            Math.max(monthStart.getTime(), parentStart.getTime())
-          );
-          const overlapEnd = new Date(
-            Math.min(monthEnd.getTime(), parentEnd.getTime())
-          );
-          const daysInMonth = Math.ceil(
-            (overlapEnd.getTime() - overlapStart.getTime()) /
-              (1000 * 60 * 60 * 24)
-          );
-          const workingDaysInMonth = Math.min(
-            daysInMonth,
-            p.daysPerWeek * 4.33
-          );
-
-          const benefitThisMonth = result.avgDailyBenefit * workingDaysInMonth;
-
-          if (idx === 0) {
-            monthData.parent1Total = Math.round(benefitThisMonth);
-            monthData.parent1Days = Math.round(workingDaysInMonth);
-          } else {
-            monthData.parent2Total = Math.round(benefitThisMonth);
-            monthData.parent2Days = Math.round(workingDaysInMonth);
-          }
-        } else {
-          const monthlySalaryAfterTax = Math.round(p.monthlySalary * 0.7);
-
-          if (idx === 0) {
-            monthData.parent1Total = monthlySalaryAfterTax;
-          } else {
-            monthData.parent2Total = monthlySalaryAfterTax;
-          }
-        }
-      });
-
-      monthlyData.push(monthData);
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-
-    return monthlyData;
-  }, [birthDate, parents, numParents, parentResults]);
+  // Ladda exempel
+  const loadExample = (exampleKey: ExampleKey) => {
+    const example = EXAMPLES[exampleKey];
+    setNumParents(example.parents.length as 1 | 2);
+    setParents(example.parents);
+    // doubleDays is now auto-calculated from overlapping periods
+    setActiveTab("calculator");
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
+      {/* Onboarding Guide */}
+      <OnboardingGuide
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
+
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-indigo-900 mb-2">
-            Föräldrapengen
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Beräkna och planera din föräldraledighet smart
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        {/* Language Switcher and Guide Button */}
+        <div className="flex justify-between items-center mb-4">
           <button
-            onClick={() => setShowInfo(!showInfo)}
-            className="flex items-center gap-2 text-indigo-700 font-semibold hover:text-indigo-800"
+            onClick={() => setShowOnboarding(true)}
+            className="group px-4 py-2 bg-white hover:bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium transition-all border-2 border-indigo-200 hover:border-indigo-300 shadow-sm hover:shadow-md flex items-center gap-2"
           >
-            <Info size={20} />
-            {showInfo
-              ? "Dölj information"
-              : "Visa information om föräldrapenning"}
+            <Baby
+              size={18}
+              className="group-hover:scale-110 transition-transform"
+            />
+            {language === "sv" ? "Visa guide" : "Show guide"}
           </button>
-
-          {showInfo && (
-            <div className="mt-4 space-y-3 text-sm text-gray-700">
-              <p>
-                <strong>Totalt antal dagar:</strong> 480 dagar per barn kan
-                delas mellan föräldrar
-              </p>
-              <p>
-                <strong>Reserverade dagar:</strong> 90 dagar per förälder kan
-                inte föras över till den andra föräldern
-              </p>
-              <p>
-                <strong>Dubbeldagar:</strong> Under barnets första 15 månader
-                kan båda föräldrarna vara hemma samtidigt i upp till 60
-                dubbeldagar.
-              </p>
-              <p>
-                <strong>Ersättningsnivåer:</strong> 390 dagar på 80% av SGI max
-                1 250 kr per dag före skatt. 90 dagar på 180 kr per dag före
-                skatt.
-              </p>
-              <p>
-                <strong>Skatt:</strong> Föräldrapenning är skattepliktig. Cirka
-                30% skatt dras om du har lön från arbetsgivare.
-              </p>
-            </div>
-          )}
+          <LanguageSwitcher />
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 mb-6">
-          <div className="mb-8">
-            <label className="block text-lg font-semibold text-gray-800 mb-3">
-              <Baby className="inline mr-2" size={20} />
-              När föds barnet?
-            </label>
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-3 mb-4">
+            <Baby className="text-indigo-600" size={48} />
+            <h1 className="text-4xl font-bold text-gray-800">{t.appTitle}</h1>
+          </div>
+          <p className="text-gray-600 text-lg">{t.appSubtitle}</p>
+        </div>
+
+        {/* Info Carousel - Always visible on mobile and tablet */}
+        <div className="lg:hidden mb-6">
+          <InfoCarousel
+            selectedCard={selectedInfoCard}
+            onSelectCard={setSelectedInfoCard}
+          />
+        </div>
+
+        {/* Tabs */}
+        <div className="flex justify-center gap-4 mb-8">
+          <button
+            onClick={() => setActiveTab("calculator")}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "calculator"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {t.calculatorTab}
+          </button>
+          <button
+            onClick={() => setActiveTab("examples")}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === "examples"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {t.examplesTab}
+          </button>
+        </div>
+
+        {/* Main content area with sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main content */}
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-xl shadow-xl p-6 mb-6">
+              {activeTab === "examples" ? (
+                <ExamplesTab onLoadExample={loadExample} />
+              ) : (
+                <>
+                  {/* Settings */}
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 mb-6 border-2 border-purple-200">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <Calendar size={24} />
+                      {t.settingsTitle}
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            {t.numParentsLabel}
+                          </label>
+                          <InfoTooltip
+                            title={t.numParentsTooltipTitle}
+                            content={t.numParentsTooltipContent}
+                            link="https://www.forsakringskassan.se/foralder/foraldrapenning"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setNumParents(1)}
+                            className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
+                              numParents === 1
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "bg-white text-gray-700 border-gray-300"
+                            }`}
+                          >
+                            1
+                          </button>
+                          <button
+                            onClick={() => setNumParents(2)}
+                            className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
+                              numParents === 2
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "bg-white text-gray-700 border-gray-300"
+                            }`}
+                          >
+                            2
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            {t.birthDateLabel}
+                          </label>
+                          <InfoTooltip
+                            title={t.birthDateTooltipTitle}
+                            content={t.birthDateTooltipContent}
+                            link="https://www.forsakringskassan.se/foralder/foraldrapenning"
+                          />
+                        </div>
+                        <input
+                          type="date"
+                          value={birthDate}
+                          onChange={(e) => setBirthDate(e.target.value)}
+                          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+                        />
+                      </div>
+
+                      {numParents === 2 && calculatedDoubleDays > 0 && (
+                        <div
+                          className={`p-4 rounded-lg border-2 ${
+                            calculatedDoubleDays > 60
+                              ? "bg-red-50 border-red-500"
+                              : "bg-blue-50 border-blue-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`text-lg font-semibold ${
+                                calculatedDoubleDays > 60
+                                  ? "text-red-700"
+                                  : "text-blue-700"
+                              }`}
+                            >
+                              {calculatedDoubleDays > 60 ? "⚠️" : "ℹ️"}{" "}
+                              {language === "sv"
+                                ? "Dubbeldagar"
+                                : "Double days"}
+                            </span>
+                            <InfoTooltip
+                              title={t.doubleDaysTooltipTitle}
+                              content={t.doubleDaysTooltipContent}
+                              link="https://www.forsakringskassan.se/privatperson/foralder/foraldrapenning/foraldralediga-tillsammans---dubbeldagar"
+                            />
+                          </div>
+                          <p
+                            className={`text-sm ${
+                              calculatedDoubleDays > 60
+                                ? "text-red-700"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {language === "sv"
+                              ? `Era perioder överlappar med ${calculatedDoubleDays} dagar. Detta använder ${calculatedDoubleDays * 2} dagar från era 480 dagar.`
+                              : `Your periods overlap by ${calculatedDoubleDays} days. This uses ${calculatedDoubleDays * 2} days from your 480 days.`}
+                          </p>
+                          {calculatedDoubleDays > 60 && (
+                            <p className="text-sm text-red-700 mt-2 font-semibold">
+                              {language === "sv"
+                                ? "⚠️ Max 60 dubbeldagar tillåts! Justera era start/slutdatum för att minska överlappningen."
+                                : "⚠️ Max 60 double days allowed! Adjust your start/end dates to reduce overlap."}
+                            </p>
+                          )}
+                          {calculatedDoubleDays > 0 &&
+                            calculatedDoubleDays <= 60 && (
+                              <p className="text-xs text-gray-600 mt-2">
+                                {language === "sv"
+                                  ? `${60 - calculatedDoubleDays} dubbeldagar kvar av max 60`
+                                  : `${60 - calculatedDoubleDays} double days remaining of max 60`}
+                              </p>
+                            )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Municipality and Tax Settings */}
+                  <div className="mb-6">
+                    <MunicipalitySelector
+                      selectedMunicipality={selectedMunicipality}
+                      onMunicipalityChange={handleMunicipalityChange}
+                      isChurchMember={isChurchMember}
+                      onChurchMemberChange={setIsChurchMember}
+                    />
+                  </div>
+
+                  {/* Parent Cards */}
+                  <div className="space-y-6 mb-6">
+                    {parents.slice(0, numParents).map((parent, idx) => (
+                      <ParentCard
+                        key={parent.id}
+                        parent={parent}
+                        index={idx}
+                        benefits={parentResults[idx]}
+                        onUpdate={(field, value) =>
+                          updateParent(parent.id, field, value)
+                        }
+                      />
+                    ))}
+
+                    {/* Days Summary */}
+                    <div className="p-6 bg-indigo-50 rounded-lg border-2 border-indigo-200">
+                      <h4 className="text-lg font-semibold text-indigo-900 mb-4">
+                        {language === "sv" ? "Dagfördelning" : "Days Breakdown"}
+                      </h4>
+
+                      {/* Days breakdown */}
+                      <div className="space-y-3 mb-4">
+                        {parents.slice(0, numParents).map((parent, idx) => (
+                          <div
+                            key={parent.id}
+                            className="flex justify-between items-center"
+                          >
+                            <span className="text-sm text-gray-700">
+                              {parent.name}:
+                            </span>
+                            <span className="text-lg font-semibold text-indigo-900">
+                              {parent.daysToTake}{" "}
+                              {language === "sv" ? "dagar" : "days"}
+                            </span>
+                          </div>
+                        ))}
+
+                        {numParents === 2 && calculatedDoubleDays > 0 && (
+                          <div className="flex justify-between items-center pt-2 border-t border-indigo-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700">
+                                {t.doubleDaysLabel}:
+                              </span>
+                              <InfoTooltip
+                                title={t.doubleDaysTooltipTitle}
+                                content={
+                                  language === "sv"
+                                    ? "När båda föräldrar tar ut samtidigt används extra dagar från totalen. Exempel: 30 dubbeldagar = båda tar 30 dagar samtidigt = 60 dagar från 480-poolen."
+                                    : "When both parents take leave simultaneously, extra days are used from the total. Example: 30 double days = both take 30 days together = 60 days from the 480-day pool."
+                                }
+                                link="https://www.forsakringskassan.se/foralder/foraldrapenning/bada-foraldrar-lediga-samtidigt"
+                              />
+                            </div>
+                            <span className="text-lg font-semibold text-orange-600">
+                              +{calculatedDoubleDays}{" "}
+                              {language === "sv" ? "dagar" : "days"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total summary */}
+                      <div className="pt-4 border-t-2 border-indigo-300">
+                        {/* Visual progress bar */}
+                        <div className="mb-4">
+                          <div className="h-8 bg-gray-200 rounded-lg overflow-hidden flex">
+                            {numParents >= 1 && (
+                              <div
+                                className="bg-blue-500 flex items-center justify-center text-white text-xs font-semibold"
+                                style={{
+                                  width: `${(parents[0].daysToTake / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                }}
+                                title={`${parents[0].name}: ${parents[0].daysToTake} ${language === "sv" ? "dagar" : "days"}`}
+                              >
+                                {parents[0].daysToTake > 30 && parents[0].name}
+                              </div>
+                            )}
+                            {numParents === 2 && (
+                              <div
+                                className="bg-purple-500 flex items-center justify-center text-white text-xs font-semibold"
+                                style={{
+                                  width: `${(parents[1].daysToTake / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                }}
+                                title={`${parents[1].name}: ${parents[1].daysToTake} ${language === "sv" ? "dagar" : "days"}`}
+                              >
+                                {parents[1].daysToTake > 30 && parents[1].name}
+                              </div>
+                            )}
+                            {calculatedDoubleDays > 0 && (
+                              <div
+                                className="bg-orange-500 flex items-center justify-center text-white text-xs font-semibold"
+                                style={{
+                                  width: `${(calculatedDoubleDays / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                }}
+                                title={`${language === "sv" ? "Dubbeldagar" : "Double days"}: ${calculatedDoubleDays} ${language === "sv" ? "dagar" : "days"}`}
+                              >
+                                {calculatedDoubleDays > 15 &&
+                                  (language === "sv" ? "Dubbel" : "Double")}
+                              </div>
+                            )}
+                            {daysRemaining > 0 && (
+                              <div
+                                className="bg-green-200 flex items-center justify-center text-green-800 text-xs font-semibold"
+                                style={{
+                                  width: `${(daysRemaining / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                }}
+                                title={`${language === "sv" ? "Återstår" : "Remaining"}: ${daysRemaining} ${language === "sv" ? "dagar" : "days"}`}
+                              >
+                                {daysRemaining > 30 &&
+                                  (language === "sv" ? "Återstår" : "Left")}
+                              </div>
+                            )}
+                          </div>
+                          {/* Legend */}
+                          <div className="flex flex-wrap gap-3 mt-2 text-xs">
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                              <span>
+                                {parents[0]?.name ||
+                                  (language === "sv"
+                                    ? "Förälder 1"
+                                    : "Parent 1")}
+                              </span>
+                            </div>
+                            {numParents === 2 && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                                <span>
+                                  {parents[1]?.name ||
+                                    (language === "sv"
+                                      ? "Förälder 2"
+                                      : "Parent 2")}
+                                </span>
+                              </div>
+                            )}
+                            {calculatedDoubleDays > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                                <span>
+                                  {language === "sv"
+                                    ? "Dubbeldagar"
+                                    : "Double days"}
+                                </span>
+                              </div>
+                            )}
+                            {daysRemaining > 0 && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 bg-green-200 border border-green-400 rounded"></div>
+                                <span>
+                                  {language === "sv" ? "Återstår" : "Remaining"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">
+                              {t.totalUsedDays}
+                            </p>
+                            <p className="text-3xl font-bold text-indigo-900">
+                              {totalDaysTaken + calculatedDoubleDays} /{" "}
+                              {TOTAL_PARENTAL_DAYS}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">
+                              {t.remainingDays}
+                            </p>
+                            <p
+                              className={`text-3xl font-bold ${
+                                daysRemaining < 0
+                                  ? "text-red-600"
+                                  : "text-green-600"
+                              }`}
+                            >
+                              {daysRemaining}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Export Buttons */}
+                  <ExportButtons
+                    parents={parents}
+                    parentResults={parentResults}
+                    birthDate={birthDate}
+                    doubleDays={calculatedDoubleDays}
+                    numParents={numParents}
+                    monthlyData={getMonthlyData}
+                  />
+
+                  {/* Monthly Income Table */}
+                  <div className="mt-6">
+                    <MonthlyIncomeTable
+                      monthlyData={getMonthlyData}
+                      numParents={numParents}
+                      doubleDays={calculatedDoubleDays}
+                    />
+                  </div>
+
+                  {/* Summary */}
+                  <Summary
+                    parents={parents}
+                    parentResults={parentResults}
+                    totalBenefitAfterTax={totalBenefitAfterTax}
+                    totalBenefitBeforeTax={totalBenefitBeforeTax}
+                    numParents={numParents}
+                  />
+
+                  {/* Footer */}
+                  <div className="text-center text-sm text-gray-600 mt-8">
+                    <p>{t.disclaimerText}</p>
+                    <p className="mt-2">{t.privacyFooterText}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar - Desktop only */}
+          <div className="lg:col-span-4">
+            <InfoSidebar
+              selectedCard={selectedInfoCard}
+              onSelectCard={setSelectedInfoCard}
             />
           </div>
-
-          <div className="mb-8">
-            <label className="block text-lg font-semibold text-gray-800 mb-3">
-              Antal föräldrar
-            </label>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setNumParents(1)}
-                className={`flex-1 py-3 px-6 rounded-lg border-2 transition-all ${
-                  numParents === 1
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              >
-                <User className="inline mr-2" size={20} />
-                En förälder
-              </button>
-              <button
-                onClick={() => setNumParents(2)}
-                className={`flex-1 py-3 px-6 rounded-lg border-2 transition-all ${
-                  numParents === 2
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              >
-                <Users className="inline mr-2" size={20} />
-                Två föräldrar
-              </button>
-            </div>
-          </div>
-
-          {numParents === 2 && (
-            <div className="mb-8 p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="inline mr-2" size={16} />
-                Antal dubbeldagar båda föräldrar hemma samtidigt: {doubleDays}
-              </label>
-              <input
-                type="range"
-                value={doubleDays}
-                onChange={(e) => setDoubleDays(Number(e.target.value))}
-                className="w-full"
-                min="0"
-                max="60"
-                step="5"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0 dagar</span>
-                <span>60 dagar</span>
-              </div>
-            </div>
-          )}
-
-          {parents.slice(0, numParents).map((parent, idx) => (
-            <div key={parent.id} className="mb-8 p-6 bg-gray-50 rounded-lg">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                {parent.name}
-              </h3>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Anställningstyp
-                </label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => updateParent(parent.id, "type", "employed")}
-                    className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm transition-all ${
-                      parent.type === "employed"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    <Briefcase className="inline mr-1" size={16} />
-                    Anställd
-                  </button>
-                  <button
-                    onClick={() => updateParent(parent.id, "type", "student")}
-                    className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm transition-all ${
-                      parent.type === "student"
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  >
-                    <GraduationCap className="inline mr-1" size={16} />
-                    Student
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Månadslön före skatt kr
-                </label>
-                <input
-                  type="number"
-                  value={parent.monthlySalary}
-                  onChange={(e) =>
-                    updateParent(
-                      parent.id,
-                      "monthlySalary",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  min="0"
-                  step="1000"
-                />
-              </div>
-
-              {parent.type === "employed" && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Arbetsgivartillägg procent
-                  </label>
-                  <input
-                    type="number"
-                    value={parent.employerTopUp}
-                    onChange={(e) =>
-                      updateParent(
-                        parent.id,
-                        "employerTopUp",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    min="0"
-                    max="100"
-                    step="5"
-                  />
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Antal dagar att ta ut: {parent.daysToTake}
-                </label>
-                <input
-                  type="range"
-                  value={parent.daysToTake}
-                  onChange={(e) =>
-                    updateParent(
-                      parent.id,
-                      "daysToTake",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full"
-                  min="0"
-                  max="480"
-                  step="10"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0 dagar</span>
-                  <span>480 dagar</span>
-                </div>
-                {parent.daysToTake > 390 && (
-                  <p className="text-xs text-amber-600 mt-2">
-                    Obs {parent.daysToTake - 390} dagar är lågersättningsdagar
-                    180 kr per dag
-                  </p>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dagar per vecka: {parent.daysPerWeek}
-                </label>
-                <input
-                  type="range"
-                  value={parent.daysPerWeek}
-                  onChange={(e) =>
-                    updateParent(
-                      parent.id,
-                      "daysPerWeek",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="w-full"
-                  min="1"
-                  max="7"
-                  step="1"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>1 dag</span>
-                  <span>7 dagar</span>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Startdatum för ledighet
-                  </label>
-                  <input
-                    type="date"
-                    value={parent.startDate}
-                    onChange={(e) =>
-                      updateParent(parent.id, "startDate", e.target.value)
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Slutdatum beräknat
-                  </label>
-                  <input
-                    type="date"
-                    value={parent.endDate}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 p-4 bg-white rounded border border-gray-200">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">SGI</p>
-                    <p className="font-semibold text-indigo-900">
-                      {parentResults[idx]?.sgi.toLocaleString("sv-SE", {
-                        maximumFractionDigits: 0,
-                      })}{" "}
-                      kr/år
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Dagersättning efter skatt</p>
-                    <p className="font-semibold text-indigo-900">
-                      {parentResults[idx]?.dailyBenefitAfterTax.toLocaleString(
-                        "sv-SE",
-                        { maximumFractionDigits: 0 }
-                      )}{" "}
-                      kr/dag
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Ledighet</p>
-                    <p className="font-semibold text-indigo-900">
-                      {parentResults[idx]?.monthsNeeded.toFixed(1)} månader
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Högnivådagar</p>
-                    <p className="font-semibold text-green-600">
-                      {parentResults[idx]?.highLevelDays} dagar
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-gray-600">
-                      Total ersättning under ledighet efter skatt
-                    </p>
-                    <p className="font-semibold text-green-600 text-xl">
-                      {parentResults[idx]?.totalBenefitAfterTax.toLocaleString(
-                        "sv-SE",
-                        { maximumFractionDigits: 0 }
-                      )}{" "}
-                      kr
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <div className="mt-6 p-6 bg-indigo-50 rounded-lg border-2 border-indigo-200">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Totalt använda dagar</p>
-                <p className="text-3xl font-bold text-indigo-900">
-                  {totalDaysTaken} / 480
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Återstående dagar</p>
-                <p
-                  className={`text-3xl font-bold ${daysRemaining < 0 ? "text-red-600" : "text-green-600"}`}
-                >
-                  {daysRemaining}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <TrendingUp size={20} />
-            Månadsinkomst över tid Lön och Föräldrapenning efter skatt
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            När en förälder är ledig visas föräldrapenning. När en förälder
-            jobbar visas normal lön cirka 70% efter skatt.
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Månad</th>
-                  <th className="text-right p-2">Förälder 1</th>
-                  {numParents === 2 && (
-                    <th className="text-right p-2">Förälder 2</th>
-                  )}
-                  <th className="text-right p-2">Totalt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getMonthlyData.map((data, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="p-2">{data.month}</td>
-                    <td className="text-right p-2">
-                      {data.parent1Total.toLocaleString("sv-SE")} kr
-                      {data.parent1Days > 0 && (
-                        <span className="text-xs text-gray-500 ml-1">
-                          ({Math.round(data.parent1Days)} dagar)
-                        </span>
-                      )}
-                    </td>
-                    {numParents === 2 && (
-                      <td className="text-right p-2">
-                        {data.parent2Total.toLocaleString("sv-SE")} kr
-                        {data.parent2Days > 0 && (
-                          <span className="text-xs text-gray-500 ml-1">
-                            ({Math.round(data.parent2Days)} dagar)
-                          </span>
-                        )}
-                      </td>
-                    )}
-                    <td className="text-right p-2 font-semibold">
-                      {(data.parent1Total + data.parent2Total).toLocaleString(
-                        "sv-SE"
-                      )}{" "}
-                      kr
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Sammanfattning
-          </h3>
-          <div className="space-y-4">
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-              <p className="text-sm text-gray-700 mb-1">
-                Total ersättning under ledighet efter skatt
-              </p>
-              <p className="text-3xl font-bold text-blue-600">
-                {totalBenefitAfterTax.toLocaleString("sv-SE", {
-                  maximumFractionDigits: 0,
-                })}{" "}
-                kr
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                Före skatt:{" "}
-                {totalBenefitBeforeTax.toLocaleString("sv-SE", {
-                  maximumFractionDigits: 0,
-                })}{" "}
-                kr
-              </p>
-            </div>
-
-            {parents.slice(0, numParents).map((parent, idx) => (
-              <div key={parent.id} className="p-4 bg-gray-50 rounded-lg">
-                <p className="font-semibold text-gray-800 mb-2">
-                  {parent.name}
-                </p>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Ledighet:</span>
-                    <span className="font-medium">
-                      {parentResults[idx]?.monthsNeeded.toFixed(1)} månader
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total ersättning:</span>
-                    <span className="font-medium text-green-600">
-                      {parentResults[idx]?.totalBenefitAfterTax.toLocaleString(
-                        "sv-SE",
-                        { maximumFractionDigits: 0 }
-                      )}{" "}
-                      kr
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Högnivådagar:</span>
-                    <span className="font-medium">
-                      {parentResults[idx]?.highLevelDays} av {parent.daysToTake}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center text-sm text-gray-600 mt-8">
-          <p>
-            Beräkningarna är vägledande. Kontakta Försäkringskassan för exakta
-            uppgifter.
-          </p>
-          <p className="mt-2">
-            Data sparas inte och lämnar aldrig din webbläsare.
-          </p>
-        </div>
+        {/* Feedback Footer */}
+        <FeedbackFooter />
       </div>
     </div>
   );
