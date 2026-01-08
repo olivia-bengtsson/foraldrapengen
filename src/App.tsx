@@ -1,11 +1,23 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Baby, Calendar } from "lucide-react";
-import { Parent, ParentBenefits, MonthlyData, TabType } from "./types";
+import { Baby, Calendar, Plus } from "lucide-react";
+import {
+  Parent,
+  ParentBenefits,
+  MonthlyData,
+  TabType,
+  ParentalPeriod,
+} from "./types";
 import {
   calculateParentBenefits,
   getMonthlyIncomeForParent,
 } from "./utils/calculations";
 import { EXAMPLES, TOTAL_PARENTAL_DAYS, ExampleKey } from "./constants";
+import {
+  migrateParentToPeriods,
+  getTotalDaysFromPeriods,
+  generatePeriodId,
+  validateNoOverlap,
+} from "./utils/periodHelpers";
 import ParentCard from "./components/ParentCard";
 import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
 import Summary from "./components/Summary";
@@ -78,10 +90,15 @@ const ForaldrapengenCalculator = () => {
       type: "employed",
       monthlySalary: 35000,
       employerTopUp: 10,
-      daysToTake: 240,
-      daysPerWeek: 5,
-      startDate: initialToday,
-      endDate: initialEndDate1,
+      periods: [
+        {
+          id: generatePeriodId(),
+          daysToTake: 240,
+          daysPerWeek: 5,
+          startDate: initialToday,
+          endDate: initialEndDate1,
+        },
+      ],
     },
     {
       id: 2,
@@ -89,10 +106,15 @@ const ForaldrapengenCalculator = () => {
       type: "employed",
       monthlySalary: 35000,
       employerTopUp: 10,
-      daysToTake: 240,
-      daysPerWeek: 5,
-      startDate: initialStartDate2,
-      endDate: initialEndDate2,
+      periods: [
+        {
+          id: generatePeriodId(),
+          daysToTake: 240,
+          daysPerWeek: 5,
+          startDate: initialStartDate2,
+          endDate: initialEndDate2,
+        },
+      ],
     },
   ]);
 
@@ -126,7 +148,7 @@ const ForaldrapengenCalculator = () => {
   const totalDaysTaken = useMemo(() => {
     return parents
       .slice(0, numParents)
-      .reduce((sum, p) => sum + p.daysToTake, 0);
+      .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
   }, [parents, numParents]);
 
   // Beräkna automatiskt dubbeldagar baserat på överlappande perioder
@@ -136,46 +158,53 @@ const ForaldrapengenCalculator = () => {
     const parent1 = parents[0];
     const parent2 = parents[1];
 
-    // Parse dates
-    const start1 = new Date(parent1.startDate);
-    const end1 = new Date(parent1.endDate);
-    const start2 = new Date(parent2.startDate);
-    const end2 = new Date(parent2.endDate);
+    let totalOverlap = 0;
 
-    // Check if periods overlap
-    const overlapStart = new Date(Math.max(start1.getTime(), start2.getTime()));
-    const overlapEnd = new Date(Math.min(end1.getTime(), end2.getTime()));
+    // Compare all periods from parent1 with all periods from parent2
+    for (const p1 of parent1.periods) {
+      for (const p2 of parent2.periods) {
+        // Parse dates
+        const start1 = new Date(p1.startDate);
+        const end1 = new Date(p1.endDate);
+        const start2 = new Date(p2.startDate);
+        const end2 = new Date(p2.endDate);
 
-    // If no overlap, return 0
-    if (overlapStart > overlapEnd) return 0;
+        // Check if periods overlap
+        const overlapStart = new Date(
+          Math.max(start1.getTime(), start2.getTime())
+        );
+        const overlapEnd = new Date(Math.min(end1.getTime(), end2.getTime()));
 
-    // Calculate overlapping days
-    // We need to count calendar days where BOTH parents are taking leave
-    let overlapDays = 0;
-    const current = new Date(overlapStart);
+        // If no overlap, continue to next comparison
+        if (overlapStart > overlapEnd) continue;
 
-    while (current <= overlapEnd) {
-      // Check if this day falls within both parents' leave periods
-      // considering their daysPerWeek
-      const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
+        // Calculate overlapping days
+        let overlapDays = 0;
+        const current = new Date(overlapStart);
 
-      // Simplified: assume they take weekdays if daysPerWeek < 7
-      const parent1TakesThisDay =
-        parent1.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
-      const parent2TakesThisDay =
-        parent2.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
+        while (current <= overlapEnd) {
+          const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
 
-      if (parent1TakesThisDay && parent2TakesThisDay) {
-        overlapDays++;
+          // Simplified: assume they take weekdays if daysPerWeek < 7
+          const parent1TakesThisDay =
+            p1.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
+          const parent2TakesThisDay =
+            p2.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
+
+          if (parent1TakesThisDay && parent2TakesThisDay) {
+            overlapDays++;
+          }
+
+          current.setDate(current.getDate() + 1);
+        }
+
+        // Adjust based on actual days per week
+        const adjustmentFactor = Math.min(p1.daysPerWeek, p2.daysPerWeek) / 7;
+        totalOverlap += Math.round(overlapDays * adjustmentFactor);
       }
-
-      current.setDate(current.getDate() + 1);
     }
 
-    // Adjust based on actual days per week
-    const adjustmentFactor =
-      Math.min(parent1.daysPerWeek, parent2.daysPerWeek) / 7;
-    return Math.round(overlapDays * adjustmentFactor);
+    return totalOverlap;
   }, [parents, numParents]);
 
   const daysRemaining =
@@ -196,9 +225,15 @@ const ForaldrapengenCalculator = () => {
 
   // Beräkna månadsinkomst
   const getMonthlyData = useMemo((): MonthlyData[] => {
+    // Get all dates from all periods of all parents
     const allDates = parents
       .slice(0, numParents)
-      .flatMap((p) => [new Date(p.startDate), new Date(p.endDate)]);
+      .flatMap((p) =>
+        p.periods.flatMap((period) => [
+          new Date(period.startDate),
+          new Date(period.endDate),
+        ])
+      );
 
     if (allDates.length === 0) return [];
 
@@ -216,7 +251,8 @@ const ForaldrapengenCalculator = () => {
         parents[0],
         parentResults[0],
         year,
-        month
+        month,
+        taxRate
       );
 
       let parent2Data = { total: 0, days: 0 };
@@ -225,7 +261,8 @@ const ForaldrapengenCalculator = () => {
           parents[1],
           parentResults[1],
           year,
-          month
+          month,
+          taxRate
         );
       }
 
@@ -241,55 +278,121 @@ const ForaldrapengenCalculator = () => {
     }
 
     return monthlyData;
-  }, [parents, parentResults, numParents]);
+  }, [parents, parentResults, numParents, taxRate]);
 
-  // Uppdatera förälder
+  // Uppdatera förälder (only parent-level fields like name, salary, type)
   const updateParent = (id: number, field: keyof Parent, value: any) => {
     setParents((prev) =>
       prev.map((p) => {
         if (p.id === id) {
-          let validatedValue = value;
-
-          // Validate daysToTake - cannot exceed 480
-          if (field === "daysToTake") {
-            validatedValue = Math.max(0, Math.min(480, Number(value) || 0));
-          }
-
-          // Validate daysPerWeek - must be between 1 and 7
-          if (field === "daysPerWeek") {
-            validatedValue = Math.max(1, Math.min(7, Number(value) || 5));
-          }
-
-          const updated = { ...p, [field]: validatedValue };
-
-          // Auto-beräkna slutdatum baserat på start, dagar och dagar/vecka
-          if (
-            field === "startDate" ||
-            field === "daysToTake" ||
-            field === "daysPerWeek"
-          ) {
-            try {
-              const start = new Date(updated.startDate);
-              if (
-                !isNaN(start.getTime()) &&
-                updated.daysToTake > 0 &&
-                updated.daysPerWeek > 0
-              ) {
-                const weeksNeeded = Math.ceil(
-                  updated.daysToTake / updated.daysPerWeek
-                );
-                start.setDate(start.getDate() + weeksNeeded * 7);
-                updated.endDate = start.toISOString().split("T")[0];
-              }
-            } catch (error) {
-              console.error("Error calculating end date:", error);
-              // Keep existing endDate if calculation fails
-            }
-          }
-
-          return updated;
+          // Only update parent-level fields
+          return { ...p, [field]: value };
         }
         return p;
+      })
+    );
+  };
+
+  // Update a specific period within a parent
+  const updatePeriod = (
+    parentId: number,
+    periodId: string,
+    field: keyof ParentalPeriod,
+    value: any
+  ) => {
+    setParents((prev) =>
+      prev.map((parent) => {
+        if (parent.id === parentId) {
+          return {
+            ...parent,
+            periods: parent.periods.map((period) => {
+              if (period.id === periodId) {
+                let validatedValue = value;
+
+                // Validate daysToTake - cannot exceed 480
+                if (field === "daysToTake") {
+                  validatedValue = Math.max(
+                    0,
+                    Math.min(480, Number(value) || 0)
+                  );
+                }
+
+                // Validate daysPerWeek - must be between 1 and 7
+                if (field === "daysPerWeek") {
+                  validatedValue = Math.max(1, Math.min(7, Number(value) || 5));
+                }
+
+                const updatedPeriod = { ...period, [field]: validatedValue };
+
+                // Auto-calculate end date based on start, days and days/week
+                if (
+                  field === "startDate" ||
+                  field === "daysToTake" ||
+                  field === "daysPerWeek"
+                ) {
+                  try {
+                    const start = new Date(updatedPeriod.startDate);
+                    if (
+                      !isNaN(start.getTime()) &&
+                      updatedPeriod.daysToTake > 0 &&
+                      updatedPeriod.daysPerWeek > 0
+                    ) {
+                      const weeksNeeded = Math.ceil(
+                        updatedPeriod.daysToTake / updatedPeriod.daysPerWeek
+                      );
+                      start.setDate(start.getDate() + weeksNeeded * 7);
+                      updatedPeriod.endDate = start.toISOString().split("T")[0];
+                    }
+                  } catch (error) {
+                    console.error("Error calculating end date:", error);
+                  }
+                }
+
+                return updatedPeriod;
+              }
+              return period;
+            }),
+          };
+        }
+        return parent;
+      })
+    );
+  };
+
+  // Add a new period to a parent
+  const addPeriod = (parentId: number) => {
+    setParents((prev) =>
+      prev.map((parent) => {
+        if (parent.id === parentId) {
+          const newPeriod: ParentalPeriod = {
+            id: generatePeriodId(),
+            startDate: getTodayDate(),
+            endDate: getDateAfterDays(getTodayDate(), 60, 5),
+            daysToTake: 60,
+            daysPerWeek: 5,
+          };
+
+          return {
+            ...parent,
+            periods: [...parent.periods, newPeriod],
+          };
+        }
+        return parent;
+      })
+    );
+  };
+
+  // Delete a period from a parent (only if more than 1 period)
+  const deletePeriod = (parentId: number, periodId: string) => {
+    setParents((prev) =>
+      prev.map((parent) => {
+        if (parent.id === parentId && parent.periods.length > 1) {
+          return {
+            ...parent,
+            periods: parent.periods.filter((p) => p.id !== periodId),
+          };
+        }
+        return parent;
       })
     );
   };
@@ -298,8 +401,8 @@ const ForaldrapengenCalculator = () => {
   const loadExample = (exampleKey: ExampleKey) => {
     const example = EXAMPLES[exampleKey];
     setNumParents(example.parents.length as 1 | 2);
+    // Examples are now in the correct format with periods - no migration needed!
     setParents(example.parents);
-    // doubleDays is now auto-calculated from overlapping periods
     setActiveTab("calculator");
   };
 
@@ -515,8 +618,16 @@ const ForaldrapengenCalculator = () => {
                         parent={parent}
                         index={idx}
                         benefits={parentResults[idx]}
-                        onUpdate={(field, value) =>
-                          updateParent(parent.id, field, value)
+                        onUpdate={(field, value) => {
+                          // Only parent-level fields (name, salary, type, employerTopUp)
+                          updateParent(parent.id, field, value);
+                        }}
+                        onUpdatePeriod={(periodId, field, value) => {
+                          updatePeriod(parent.id, periodId, field, value);
+                        }}
+                        onAddPeriod={() => addPeriod(parent.id)}
+                        onDeletePeriod={(periodId) =>
+                          deletePeriod(parent.id, periodId)
                         }
                       />
                     ))}
@@ -538,13 +649,13 @@ const ForaldrapengenCalculator = () => {
                               {parent.name}:
                             </span>
                             <span className="text-lg font-semibold text-indigo-900">
-                              {parent.daysToTake}{" "}
+                              {getTotalDaysFromPeriods(parent.periods)}{" "}
                               {language === "sv" ? "dagar" : "days"}
                             </span>
                           </div>
                         ))}
 
-                        {numParents === 2 && calculatedDoubleDays > 0 && (
+                        {numParents === 2 && (
                           <div className="flex justify-between items-center pt-2 border-t border-indigo-200">
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-gray-700">
@@ -560,8 +671,15 @@ const ForaldrapengenCalculator = () => {
                                 link="https://www.forsakringskassan.se/foralder/foraldrapenning/bada-foraldrar-lediga-samtidigt"
                               />
                             </div>
-                            <span className="text-lg font-semibold text-orange-600">
-                              +{calculatedDoubleDays}{" "}
+                            <span
+                              className={`text-lg font-semibold ${
+                                calculatedDoubleDays > 0
+                                  ? "text-orange-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {calculatedDoubleDays > 0 ? "+" : ""}
+                              {calculatedDoubleDays}{" "}
                               {language === "sv" ? "dagar" : "days"}
                             </span>
                           </div>
@@ -572,27 +690,29 @@ const ForaldrapengenCalculator = () => {
                       <div className="pt-4 border-t-2 border-indigo-300">
                         {/* Visual progress bar */}
                         <div className="mb-4">
-                          <div className="h-8 bg-gray-200 rounded-lg overflow-hidden flex">
+                          <div className="h-12 md:h-8 bg-gray-200 rounded-lg overflow-hidden flex">
                             {numParents >= 1 && (
                               <div
                                 className="bg-blue-500 flex items-center justify-center text-white text-xs font-semibold"
                                 style={{
-                                  width: `${(parents[0].daysToTake / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                  width: `${(getTotalDaysFromPeriods(parents[0].periods) / TOTAL_PARENTAL_DAYS) * 100}%`,
                                 }}
-                                title={`${parents[0].name}: ${parents[0].daysToTake} ${language === "sv" ? "dagar" : "days"}`}
+                                title={`${parents[0].name}: ${getTotalDaysFromPeriods(parents[0].periods)} ${language === "sv" ? "dagar" : "days"}`}
                               >
-                                {parents[0].daysToTake > 30 && parents[0].name}
+                                {getTotalDaysFromPeriods(parents[0].periods) >
+                                  30 && parents[0].name}
                               </div>
                             )}
                             {numParents === 2 && (
                               <div
                                 className="bg-purple-500 flex items-center justify-center text-white text-xs font-semibold"
                                 style={{
-                                  width: `${(parents[1].daysToTake / TOTAL_PARENTAL_DAYS) * 100}%`,
+                                  width: `${(getTotalDaysFromPeriods(parents[1].periods) / TOTAL_PARENTAL_DAYS) * 100}%`,
                                 }}
-                                title={`${parents[1].name}: ${parents[1].daysToTake} ${language === "sv" ? "dagar" : "days"}`}
+                                title={`${parents[1].name}: ${getTotalDaysFromPeriods(parents[1].periods)} ${language === "sv" ? "dagar" : "days"}`}
                               >
-                                {parents[1].daysToTake > 30 && parents[1].name}
+                                {getTotalDaysFromPeriods(parents[1].periods) >
+                                  30 && parents[1].name}
                               </div>
                             )}
                             {calculatedDoubleDays > 0 && (
@@ -708,6 +828,10 @@ const ForaldrapengenCalculator = () => {
                       monthlyData={getMonthlyData}
                       numParents={numParents}
                       doubleDays={calculatedDoubleDays}
+                      parent1Name={parents[0]?.name}
+                      parent2Name={
+                        numParents === 2 ? parents[1]?.name : undefined
+                      }
                     />
                   </div>
 

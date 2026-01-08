@@ -1,6 +1,7 @@
 // Konstanter och exempeldata för kalkylatorn
 
 import { Parent } from "../types";
+import { generatePeriodId } from "../utils/periodHelpers";
 
 // Försäkringskassan länkar
 export { FK_LINKS } from "./FkLinks";
@@ -85,10 +86,15 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
-        daysToTake: 240,
-        daysPerWeek: 5,
-        startDate: today,
-        endDate: endDate1,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 240,
+            daysPerWeek: 5,
+            startDate: today,
+            endDate: endDate1,
+          },
+        ],
       },
       {
         id: 2,
@@ -96,10 +102,15 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
-        daysToTake: 240,
-        daysPerWeek: 5,
-        startDate: startDate2,
-        endDate: endDate2,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 240,
+            daysPerWeek: 5,
+            startDate: startDate2,
+            endDate: endDate2,
+          },
+        ],
       },
     ],
   },
@@ -114,10 +125,15 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 45000,
         employerTopUp: 20,
-        daysToTake: 240,
-        daysPerWeek: 7,
-        startDate: today,
-        endDate: endDateMoney1,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 240,
+            daysPerWeek: 7,
+            startDate: today,
+            endDate: endDateMoney1,
+          },
+        ],
       },
       {
         id: 2,
@@ -125,17 +141,22 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 45000,
         employerTopUp: 20,
-        daysToTake: 240,
-        daysPerWeek: 7,
-        startDate: startDateMoney2,
-        endDate: endDateMoney2,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 240,
+            daysPerWeek: 7,
+            startDate: startDateMoney2,
+            endDate: endDateMoney2,
+          },
+        ],
       },
     ],
   },
   balanced: {
-    name: "Balanserat",
+    name: "Balanserat med växling",
     description:
-      "Blanda 5 och 6 dagar/vecka, perioder överlappar för dubbeldagar",
+      "Föräldrar växlar perioder - visar flera perioder per förälder",
     parents: [
       {
         id: 1,
@@ -143,10 +164,30 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 38000,
         employerTopUp: 10,
-        daysToTake: 210,
-        daysPerWeek: 6,
-        startDate: today,
-        endDate: endDateBalanced1,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 105,
+            daysPerWeek: 5,
+            startDate: today,
+            endDate: getDateAfterDays(today, 105, 5),
+          },
+          {
+            id: generatePeriodId(),
+            daysToTake: 105,
+            daysPerWeek: 5,
+            startDate: getDateAfterDays(
+              getDateAfterDays(today, 105, 5),
+              105,
+              5
+            ), // After parent 2's first period
+            endDate: getDateAfterDays(
+              getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
+              105,
+              5
+            ),
+          },
+        ],
       },
       {
         id: 2,
@@ -154,10 +195,34 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 32000,
         employerTopUp: 10,
-        daysToTake: 210,
-        daysPerWeek: 5,
-        startDate: today, // Start same day to create overlap!
-        endDate: endDateBalanced2,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 135,
+            daysPerWeek: 5,
+            startDate: getDateAfterDays(today, 105, 5), // After parent 1's first period
+            endDate: getDateAfterDays(getDateAfterDays(today, 105, 5), 135, 5),
+          },
+          {
+            id: generatePeriodId(),
+            daysToTake: 135,
+            daysPerWeek: 5,
+            startDate: getDateAfterDays(
+              getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
+              105,
+              5
+            ), // After parent 1's second period
+            endDate: getDateAfterDays(
+              getDateAfterDays(
+                getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
+                105,
+                5
+              ),
+              135,
+              5
+            ),
+          },
+        ],
       },
     ],
   },
@@ -171,10 +236,15 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
-        daysToTake: 480,
-        daysPerWeek: 5,
-        startDate: today,
-        endDate: endDateSingle,
+        periods: [
+          {
+            id: generatePeriodId(),
+            daysToTake: 480,
+            daysPerWeek: 5,
+            startDate: today,
+            endDate: endDateSingle,
+          },
+        ],
       },
     ],
   },

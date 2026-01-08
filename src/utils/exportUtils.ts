@@ -1,4 +1,5 @@
 import { Parent, ParentBenefits } from "../types";
+import { getTotalDaysFromPeriods } from "./periodHelpers";
 
 /**
  * Genererar en textsummering som kan kopieras till urklipp
@@ -34,10 +35,9 @@ Månadslön: ${parent.monthlySalary.toLocaleString("sv-SE")} kr
 Arbetsgivartillägg (PAG): ${parent.employerTopUp}%
 
 PLANERAD LEDIGHET:
-• Antal dagar: ${parent.daysToTake} dagar
-• Dagar per vecka: ${parent.daysPerWeek} dagar/vecka
-• Startdatum: ${parent.startDate}
-• Slutdatum: ${parent.endDate}
+• Antal dagar: ${getTotalDaysFromPeriods(parent.periods)} dagar
+• Antal perioder: ${parent.periods.length}
+${parent.periods.map((p, i) => `  Period ${i + 1}: ${p.startDate} till ${p.endDate} (${p.daysToTake} dagar, ${p.daysPerWeek} d/v)`).join("\n")}
 • Ledighet i månader: ${result.monthsNeeded.toFixed(1)} mån
 
 EKONOMI:
@@ -54,8 +54,8 @@ ${parent.employerTopUp > 0 ? `• Arbetsgivartillägg: ${result.employerTopUpAmo
 ═══════════════════════════════════════
 TOTALT FÖR FAMILJEN
 ───────────────────────────────────────
-• Använda dagar: ${parents.slice(0, numParents).reduce((sum, p) => sum + p.daysToTake, 0)} av 480
-• Återstående dagar: ${480 - parents.slice(0, numParents).reduce((sum, p) => sum + p.daysToTake, 0) - doubleDays}
+• Använda dagar: ${parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0)} av 480
+• Återstående dagar: ${480 - parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0) - doubleDays}
 • Total ersättning efter skatt: ${parentResults.reduce((sum, r) => sum + r.totalBenefitAfterTax, 0).toLocaleString("sv-SE")} kr
 
 ═══════════════════════════════════════
@@ -78,8 +78,8 @@ När du ansöker på Försäkringskassan behöver du:
 • Ta inte semester samtidigt som föräldrapenning
 
 🔗 Länkar:
-• Ansök: https://www.forsakringskassan.se/privatperson/foralder/foraldrapenning
-• Räkna SGI: https://www.forsakringskassan.se/privatperson/sjuk/sjukpenning-forsta-dagen/sgi
+• Ansök: https://www.forsakringskassan.se/foralder/foraldrapenning
+• Räkna SGI: https://www.forsakringskassan.se/sjuk/berakna-sgi
 
 ═══════════════════════════════════════
 ⚠️  VIKTIG INFORMATION
@@ -149,10 +149,11 @@ export const generateExcelExport = (
     csv += `\n`;
 
     csv += "PLANERAD LEDIGHET\n";
-    csv += `Antal dagar,${parent.daysToTake}\n`;
-    csv += `Dagar per vecka,${parent.daysPerWeek}\n`;
-    csv += `Startdatum,${parent.startDate}\n`;
-    csv += `Slutdatum,${parent.endDate}\n`;
+    csv += `Antal dagar totalt,${getTotalDaysFromPeriods(parent.periods)}\n`;
+    csv += `Antal perioder,${parent.periods.length}\n`;
+    parent.periods.forEach((p, i) => {
+      csv += `Period ${i + 1},${p.startDate} till ${p.endDate},${p.daysToTake} dagar,${p.daysPerWeek} d/v\n`;
+    });
     csv += `Ledighet i månader,${result.monthsNeeded.toFixed(1)}\n`;
     csv += `\n`;
 
@@ -172,7 +173,7 @@ export const generateExcelExport = (
   csv += "TOTALT FÖR FAMILJEN\n";
   const totalDays = parents
     .slice(0, numParents)
-    .reduce((sum, p) => sum + p.daysToTake, 0);
+    .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
   const remainingDays = 480 - totalDays - doubleDays;
   const totalBenefit = parentResults.reduce(
     (sum, r) => sum + r.totalBenefitAfterTax,

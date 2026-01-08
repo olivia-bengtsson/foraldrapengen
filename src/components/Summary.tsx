@@ -1,5 +1,6 @@
 import React from "react";
 import { Parent, ParentBenefits } from "../types";
+import { getTotalDaysFromPeriods } from "../utils/periodHelpers";
 import { useLanguage } from "../i18n/LanguageContext";
 
 interface SummaryProps {
@@ -20,7 +21,7 @@ const Summary: React.FC<SummaryProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         {t.summaryTitle}
       </h3>
@@ -67,7 +68,8 @@ const Summary: React.FC<SummaryProps> = ({
               <div className="flex justify-between">
                 <span className="text-gray-600">{t.highLevelDaysLabel}:</span>
                 <span className="font-medium">
-                  {parentResults[idx]?.highLevelDays} av {parent.daysToTake}
+                  {parentResults[idx]?.highLevelDays} av{" "}
+                  {getTotalDaysFromPeriods(parent.periods)}
                 </span>
               </div>
             </div>

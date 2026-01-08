@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Föräldrapengen",
+  "name": "Föräldrapengen - Föräldrapenning Kalkylator",
+  "description": "Beräkna din föräldrapenning enkelt och snabbt. Inkluderar SGI, skatt, PAG-tillägg och dubbeldagar.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,25 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#4F46E5",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "categories": ["finance", "utilities"],
+  "lang": "sv-SE",
+  "dir": "ltr",
+  "scope": "/",
+  "related_applications": [],
+  "prefer_related_applications": false
 }

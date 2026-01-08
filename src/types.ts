@@ -1,15 +1,19 @@
-// Types för föräldrapengen-kalkylatorn
+// Period interface for multiple leave periods per parent
+export interface ParentalPeriod {
+  id: string;
+  startDate: string;
+  endDate: string;
+  daysToTake: number;
+  daysPerWeek: number;
+}
 
 export interface Parent {
   id: number;
   name: string;
-  type: "employed" | "student";
+  type: "employed" | "self_employed" | "unemployed";
   monthlySalary: number;
   employerTopUp: number;
-  daysToTake: number;
-  daysPerWeek: number;
-  startDate: string;
-  endDate: string;
+  periods: ParentalPeriod[]; // Array of periods
 }
 
 export interface ParentBenefits {
@@ -29,6 +33,12 @@ export interface ParentBenefits {
   monthsNeeded: number;
   avgDailyBenefit: number;
   tax: number;
+
+  // Legacy fields for backward compatibility
+  benefitBeforeTax?: number;
+  benefitAfterTax?: number;
+  taxAmount?: number;
+  totalIncomeAfterTax?: number;
 }
 
 export interface MonthlyData {

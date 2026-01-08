@@ -1,6 +1,7 @@
 // Beräkningslogik för föräldrapengen
 
 import { Parent, ParentBenefits } from "../types";
+import { getTotalDaysFromPeriods } from "./periodHelpers";
 
 // Konstanter för 2025
 const MAX_SGI = 588000; // 10 prisbasbelopp för 2025
@@ -76,11 +77,14 @@ export const calculateParentBenefits = (
   const sgi = calculateSGI(parent.monthlySalary);
   const dailyBenefit = calculateDailyBenefit(sgi);
 
-  const reservedDays = 90;
-  const transferableDays = Math.max(0, parent.daysToTake - reservedDays);
+  // Get total days from all periods
+  const totalDays = getTotalDaysFromPeriods(parent.periods);
 
-  const highLevelDays = Math.min(parent.daysToTake, 390);
-  const lowLevelDays = Math.max(0, parent.daysToTake - 390);
+  const reservedDays = 90;
+  const transferableDays = Math.max(0, totalDays - reservedDays);
+
+  const highLevelDays = Math.min(totalDays, 390);
+  const lowLevelDays = Math.max(0, totalDays - 390);
 
   // Beräkna FK-ersättning före skatt
   const fkBenefitBeforeTax =
@@ -109,11 +113,15 @@ export const calculateParentBenefits = (
   const totalBenefitBeforeTax = fkBenefitBeforeTax + employerTopUpBeforeTax;
   const totalBenefitAfterTax = fkBenefitAfterTax + employerTopUpAfterTax;
 
-  const totalDays = getDaysBetweenDates(parent.startDate, parent.endDate);
-  const weeksNeeded = Math.ceil(totalDays / 7);
+  // Calculate total calendar days from all periods
+  let totalCalendarDays = 0;
+  for (const period of parent.periods) {
+    const periodDays = getDaysBetweenDates(period.startDate, period.endDate);
+    totalCalendarDays += periodDays;
+  }
+  const weeksNeeded = Math.ceil(totalCalendarDays / 7);
 
-  const avgDailyBenefit =
-    parent.daysToTake > 0 ? totalBenefitAfterTax / parent.daysToTake : 0;
+  const avgDailyBenefit = totalDays > 0 ? totalBenefitAfterTax / totalDays : 0;
 
   return {
     sgi,
@@ -142,41 +150,59 @@ export const getMonthlyIncomeForParent = (
   parent: Parent,
   benefits: ParentBenefits,
   year: number,
-  month: number
+  month: number,
+  taxRate: number = 0.3
 ): { total: number; days: number } => {
-  const startDate = new Date(parent.startDate);
-  const endDate = new Date(parent.endDate);
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0);
 
-  // Om föräldern inte är ledig denna månad
-  if (monthStart > endDate || monthEnd < startDate) {
-    // Normal lön efter skatt (ca 70%)
-    const monthlySalaryAfterTax = parent.monthlySalary * 0.7;
+  let totalDaysThisMonth = 0;
+  let totalIncomeThisMonth = 0;
+
+  // Loop through all periods to see if any fall within this month
+  for (const period of parent.periods) {
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
+
+    // If period overlaps with this month
+    if (!(monthStart > endDate || monthEnd < startDate)) {
+      // Calculate days in this month for this period
+      const overlapStart = monthStart > startDate ? monthStart : startDate;
+      const overlapEnd = monthEnd < endDate ? monthEnd : endDate;
+      const daysInMonth =
+        Math.ceil(
+          (overlapEnd.getTime() - overlapStart.getTime()) /
+            (1000 * 60 * 60 * 24)
+        ) + 1; // +1 to include both start and end day
+
+      totalDaysThisMonth += daysInMonth;
+
+      // Calculate income for these days
+      const avgDaily = benefits.avgDailyBenefit;
+      const incomeForPeriod = avgDaily * period.daysPerWeek * (daysInMonth / 7);
+      totalIncomeThisMonth += incomeForPeriod;
+    }
+  }
+
+  // If no leave days this month, return salary
+  if (totalDaysThisMonth === 0) {
+    const monthlySalaryAfterTax = parent.monthlySalary * (1 - taxRate);
     return { total: monthlySalaryAfterTax, days: 0 };
   }
 
-  // Räkna lediga dagar denna månad
-  const overlapStart = monthStart > startDate ? monthStart : startDate;
-  const overlapEnd = monthEnd < endDate ? monthEnd : endDate;
-  const daysInMonth = Math.ceil(
-    (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // Om helt ledig hela månaden
-  if (overlapStart <= monthStart && overlapEnd >= monthEnd) {
-    const avgDaily = benefits.avgDailyBenefit;
-    return { total: avgDaily * parent.daysPerWeek * 4.33, days: daysInMonth };
+  // Check if entire month is leave
+  const daysInFullMonth = monthEnd.getDate();
+  if (totalDaysThisMonth >= daysInFullMonth) {
+    // Full month of leave
+    return { total: totalIncomeThisMonth, days: totalDaysThisMonth };
   }
 
-  // Delvis ledig - räkna ut proportionellt
-  const daysInFullMonth = monthEnd.getDate();
-  const workDaysRatio = (daysInFullMonth - daysInMonth) / daysInFullMonth;
-  const leaveDaysRatio = daysInMonth / daysInFullMonth;
+  // Partial month - combine work income and leave income
+  const leaveDaysRatio = totalDaysThisMonth / daysInFullMonth;
+  const workDaysRatio = 1 - leaveDaysRatio;
 
-  const workIncome = parent.monthlySalary * 0.7 * workDaysRatio;
-  const leaveIncome =
-    benefits.avgDailyBenefit * parent.daysPerWeek * 4.33 * leaveDaysRatio;
+  const workIncome = parent.monthlySalary * (1 - taxRate) * workDaysRatio;
+  const leaveIncome = totalIncomeThisMonth;
 
-  return { total: workIncome + leaveIncome, days: daysInMonth };
+  return { total: workIncome + leaveIncome, days: totalDaysThisMonth };
 };

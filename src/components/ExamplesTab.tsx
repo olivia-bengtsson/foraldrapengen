@@ -1,6 +1,7 @@
 import React from "react";
 import { Lightbulb, Clock, DollarSign, Heart, User } from "lucide-react";
 import { EXAMPLES, ExampleKey } from "../constants";
+import { getTotalDaysFromPeriods } from "../utils/periodHelpers";
 
 interface ExamplesTabProps {
   onLoadExample: (exampleKey: ExampleKey) => void;
@@ -45,6 +46,10 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {exampleConfigs.map(({ key, icon: Icon, color }) => {
           const example = EXAMPLES[key];
+          const firstParent = example.parents[0];
+          const totalDays = getTotalDaysFromPeriods(firstParent.periods);
+          const numPeriods = firstParent.periods.length;
+
           return (
             <button
               key={key}
@@ -66,9 +71,15 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
                   </p>
                   <div className="space-y-1 text-xs text-gray-500">
                     <p>Föräldrar: {example.parents.length === 1 ? "1" : "2"}</p>
-                    <p>Dagar per vecka: {example.parents[0].daysPerWeek}</p>
-                    {example.parents[0].employerTopUp > 0 && (
-                      <p>PAG: {example.parents[0].employerTopUp}%</p>
+                    <p>Totalt dagar: {totalDays}</p>
+                    <p>Antal perioder: {numPeriods}</p>
+                    {numPeriods === 1 && (
+                      <p>
+                        Dagar per vecka: {firstParent.periods[0].daysPerWeek}
+                      </p>
+                    )}
+                    {firstParent.employerTopUp > 0 && (
+                      <p>PAG: {firstParent.employerTopUp}%</p>
                     )}
                   </div>
                 </div>
@@ -76,29 +87,6 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
             </button>
           );
         })}
-      </div>
-
-      <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-        <h3 className="font-semibold text-gray-800 mb-3">Om dessa scenarier</h3>
-        <ul className="space-y-2 text-sm text-gray-600">
-          <li>
-            • <strong>Maximera tid:</strong> Prioriterar längsta möjliga tid med
-            barnet genom att dela dagar jämnt och ta ledigt färre dagar per
-            vecka
-          </li>
-          <li>
-            • <strong>Maximera inkomst:</strong> Högre lön och
-            arbetsgivartillägg, samt att ta ledigt 7 dagar/vecka för snabb
-            återgång till arbete
-          </li>
-          <li>
-            • <strong>Balanserat:</strong> En medelväg mellan tid och pengar med
-            realistiska förutsättningar
-          </li>
-          <li>
-            • <strong>Ensamförälder:</strong> När en förälder tar alla 480 dagar
-          </li>
-        </ul>
       </div>
     </div>
   );

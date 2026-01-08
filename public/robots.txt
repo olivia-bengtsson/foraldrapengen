@@ -1,3 +1,44 @@
-# https://www.robotstxt.org/robotstxt.html
+# robots.txt för Föräldrapenning Kalkylator
+
+# Tillåt alla crawlers att indexera allt
 User-agent: *
-Disallow:
+Allow: /
+
+# Sitemap location
+Sitemap: https://foraldrapengen.se/sitemap.xml
+
+# Crawl-delay (optional - Google ignorerar detta)
+# Crawl-delay: 1
+
+# Blockera specifika sökvägar (om du har dem)
+# Disallow: /admin/
+# Disallow: /api/
+# Disallow: /static/js/
+# Disallow: /static/css/
+
+# Tillåt specifika filer även om parent är blockerad
+# Allow: /static/media/
+
+# Specifika instruktioner för Googlebot
+User-agent: Googlebot
+Allow: /
+
+# Specifika instruktioner för Bingbot
+User-agent: Bingbot
+Allow: /
+
+# Blockera AI scrapers (valfritt - om du inte vill att AI tränar på din data)
+# User-agent: GPTBot
+# Disallow: /
+
+# User-agent: ChatGPT-User
+# Disallow: /
+
+# User-agent: CCBot
+# Disallow: /
+
+# User-agent: anthropic-ai
+# Disallow: /
+
+# User-agent: Claude-Web
+# Disallow: /

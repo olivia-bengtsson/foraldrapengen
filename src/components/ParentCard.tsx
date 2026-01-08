@@ -1,13 +1,26 @@
-import React from "react";
-import { Parent, ParentBenefits } from "../types";
+import React, { useState } from "react";
+import { Parent, ParentBenefits, ParentalPeriod } from "../types";
+import {
+  getTotalDaysFromPeriods,
+  validateNoOverlap,
+} from "../utils/periodHelpers";
+import PeriodCard from "./PeriodCard";
 import InfoTooltip from "./InfoTooltip";
 import { useLanguage } from "../i18n/LanguageContext";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 
 interface ParentCardProps {
   parent: Parent;
   index: number;
   benefits: ParentBenefits;
   onUpdate: (field: keyof Parent, value: any) => void;
+  onUpdatePeriod: (
+    periodId: string,
+    field: keyof ParentalPeriod,
+    value: any
+  ) => void;
+  onAddPeriod: () => void;
+  onDeletePeriod: (periodId: string) => void;
 }
 
 const ParentCard: React.FC<ParentCardProps> = ({
@@ -15,20 +28,30 @@ const ParentCard: React.FC<ParentCardProps> = ({
   index,
   benefits,
   onUpdate,
+  onUpdatePeriod,
+  onAddPeriod,
+  onDeletePeriod,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [showPeriods, setShowPeriods] = useState(false);
+
+  // Calculate total days from all periods
+  const totalDays = getTotalDaysFromPeriods(parent.periods);
+
+  // Validate periods for overlap
+  const validation = validateNoOverlap(parent.periods);
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-6 border-2 border-indigo-200">
+    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 md:p-6 border-2 border-indigo-200">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
           {index + 1}
         </div>
         <input
           type="text"
           value={parent.name}
           onChange={(e) => onUpdate("name", e.target.value)}
-          className="text-xl font-bold bg-white border-2 border-indigo-300 rounded px-3 py-2 flex-1"
+          className="text-xl font-bold bg-white border-2 border-indigo-300 rounded px-3 py-2 flex-1 min-w-0"
         />
       </div>
 
@@ -76,84 +99,70 @@ const ParentCard: React.FC<ParentCardProps> = ({
           />
         </div>
 
-        <div>
-          <div className="flex items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {t.daysToTakeLabel}
-            </label>
-            <InfoTooltip
-              title={t.daysToTakeTooltipTitle}
-              content={t.daysToTakeTooltipContent}
-              link="https://www.forsakringskassan.se/foralder/foraldrapenning"
-            />
-          </div>
-          <input
-            type="number"
-            value={parent.daysToTake}
-            onChange={(e) => onUpdate("daysToTake", Number(e.target.value))}
-            min="0"
-            max="480"
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-            placeholder="240"
-          />
-        </div>
-
-        <div>
-          <div className="flex items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {t.daysPerWeekLabel}
-            </label>
-            <InfoTooltip
-              title={t.daysPerWeekTooltipTitle}
-              content={t.daysPerWeekTooltipContent}
-              link="https://www.forsakringskassan.se/foralder/foraldrapenning/ta-ut-pa-deltid"
-            />
-          </div>
-          <input
-            type="number"
-            min="1"
-            max="7"
-            value={parent.daysPerWeek}
-            onChange={(e) => onUpdate("daysPerWeek", Number(e.target.value))}
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
-            placeholder="5"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="flex items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t.startDateLabel}
-              </label>
-              <InfoTooltip
-                title={t.startDateTooltipTitle}
-                content={t.startDateTooltipContent}
-                link="https://www.forsakringskassan.se/foralder/foraldrapenning"
-              />
+        {/* Periods Section */}
+        <div className="border-t-2 border-indigo-200 pt-4">
+          <button
+            onClick={() => setShowPeriods(!showPeriods)}
+            className="w-full flex items-center justify-between p-3 bg-white rounded-lg border-2 border-indigo-300 hover:bg-indigo-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              {showPeriods ? (
+                <ChevronDown size={20} />
+              ) : (
+                <ChevronRight size={20} />
+              )}
+              <span className="font-semibold text-gray-800">
+                📅 {language === "sv" ? "Perioder" : "Periods"} (
+                {parent.periods.length})
+              </span>
             </div>
-            <input
-              type="date"
-              value={parent.startDate}
-              onChange={(e) => onUpdate("startDate", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t.endDateCalculated}
-            </label>
-            <input
-              type="date"
-              value={parent.endDate}
-              disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-            />
-          </div>
+            <div className="text-sm text-gray-600">
+              {language === "sv" ? "Totalt:" : "Total:"}{" "}
+              <span className="font-bold text-indigo-900">{totalDays}</span>{" "}
+              {language === "sv" ? "dagar" : "days"}
+            </div>
+          </button>
+
+          {!validation.valid && (
+            <div className="mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded text-sm text-red-700">
+              ⚠️ {validation.message}
+            </div>
+          )}
+
+          {showPeriods && (
+            <div className="mt-4 space-y-3">
+              {parent.periods.map((period, idx) => (
+                <PeriodCard
+                  key={period.id}
+                  period={period}
+                  periodIndex={idx}
+                  onUpdate={(field, value) =>
+                    onUpdatePeriod(period.id, field, value)
+                  }
+                  onDelete={() => onDeletePeriod(period.id)}
+                  canDelete={parent.periods.length > 1}
+                  hasOverlapError={
+                    !validation.valid &&
+                    validation.overlappingPeriods?.includes(idx)
+                  }
+                />
+              ))}
+
+              <button
+                onClick={onAddPeriod}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg border-2 border-indigo-300 transition-colors"
+              >
+                <Plus size={20} />
+                <span className="font-semibold">
+                  {language === "sv" ? "Lägg till period" : "Add period"}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 p-4 bg-white rounded border border-gray-200">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-600">{t.sgiLabel}</p>
               <p className="font-semibold text-indigo-900">
