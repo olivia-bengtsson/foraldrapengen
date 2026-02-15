@@ -20,7 +20,7 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
   canDelete,
   hasOverlapError = false,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
 
   return (
     <div

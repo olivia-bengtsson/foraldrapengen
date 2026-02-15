@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Baby, Calendar, Plus } from "lucide-react";
+import { Baby, Calendar } from "lucide-react";
 import {
   Parent,
   ParentBenefits,
@@ -13,10 +13,8 @@ import {
 } from "./utils/calculations";
 import { EXAMPLES, TOTAL_PARENTAL_DAYS, ExampleKey } from "./constants";
 import {
-  migrateParentToPeriods,
   getTotalDaysFromPeriods,
   generatePeriodId,
-  validateNoOverlap,
 } from "./utils/periodHelpers";
 import ParentCard from "./components/ParentCard";
 import MonthlyIncomeTable from "./components/MonthlyIncomeTable";

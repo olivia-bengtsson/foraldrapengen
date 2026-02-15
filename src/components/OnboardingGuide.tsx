@@ -22,7 +22,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
 
   const steps = [

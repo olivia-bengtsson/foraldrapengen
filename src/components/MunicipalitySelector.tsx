@@ -21,7 +21,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
   isChurchMember,
   onChurchMemberChange,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [showInfo, setShowInfo] = useState(false);
 
   const handleMunicipalityChange = (municipality: string) => {
