@@ -128,7 +128,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
         style={{ height: "min(520px, 85vh)" }}
       >
         {/* Header */}
-        <div className="bg-indigo-600 p-6 text-white relative flex-shrink-0">
+        <div className="bg-green-700 p-6 text-white relative flex-shrink-0">
           {/* Language and Close buttons */}
           <div className="absolute top-4 right-4 flex items-center gap-2">
             {/* Language switcher */}
@@ -142,7 +142,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
                 }
                 className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                   language === "sv"
-                    ? "bg-white text-indigo-600"
+                    ? "bg-white text-green-700"
                     : "text-white hover:bg-white hover:bg-opacity-10"
                 }`}
               >
@@ -157,7 +157,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
                 }
                 className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                   language === "en"
-                    ? "bg-white text-indigo-600"
+                    ? "bg-white text-green-700"
                     : "text-white hover:bg-white hover:bg-opacity-10"
                 }`}
               >
@@ -168,7 +168,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
             {/* Close button */}
             <button
               onClick={handleSkip}
-              className="p-2 hover:bg-indigo-700 rounded-full transition-colors"
+              className="p-2 hover:bg-green-800 rounded-full transition-colors"
               aria-label="Close"
             >
               <X size={24} />
@@ -185,7 +185,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
                   ? currentStepData.titleSv
                   : currentStepData.titleEn}
               </h2>
-              <p className="text-sm text-indigo-100 mt-1">
+              <p className="text-sm text-green-100 mt-1">
                 {language === "sv"
                   ? `Steg ${currentStep + 1} av ${steps.length}`
                   : `Step ${currentStep + 1} of ${steps.length}`}
@@ -194,7 +194,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
           </div>
 
           {/* Progress bar */}
-          <div className="w-full bg-indigo-800 bg-opacity-30 rounded-full h-2">
+          <div className="w-full bg-green-800 bg-opacity-30 rounded-full h-2">
             <div
               className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
@@ -213,10 +213,10 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
 
             {/* Visual hint based on step */}
             {currentStep === 1 && (
-              <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-3 mb-2">
-                  <Calendar size={20} className="text-indigo-600" />
-                  <span className="font-semibold text-indigo-900">
+                  <Calendar size={20} className="text-green-700" />
+                  <span className="font-semibold text-green-900">
                     {language === "sv" ? "Tips:" : "Tip:"}
                   </span>
                 </div>
@@ -229,10 +229,10 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
             )}
 
             {currentStep === 2 && (
-              <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-3 mb-2">
-                  <MapPin size={20} className="text-indigo-600" />
-                  <span className="font-semibold text-indigo-900">
+                  <MapPin size={20} className="text-green-700" />
+                  <span className="font-semibold text-green-900">
                     {language === "sv" ? "Exempel:" : "Example:"}
                   </span>
                 </div>
@@ -245,10 +245,10 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
             )}
 
             {currentStep === 5 && (
-              <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+              <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-3 mb-2">
-                  <Download size={20} className="text-indigo-600" />
-                  <span className="font-semibold text-indigo-900">
+                  <Download size={20} className="text-green-700" />
+                  <span className="font-semibold text-green-900">
                     {language === "sv" ? "Exportformaten:" : "Export Formats:"}
                   </span>
                 </div>
@@ -269,9 +269,9 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
 
             {currentStep === 6 && (
               <div className="mt-6 space-y-3">
-                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                   <p className="text-sm text-gray-700">
-                    <strong className="text-indigo-900">
+                    <strong className="text-green-900">
                       🔒 {language === "sv" ? "Integritet:" : "Privacy:"}
                     </strong>{" "}
                     {language === "sv"
@@ -315,7 +315,7 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
             )}
             <button
               onClick={handleNext}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-all hover:shadow-lg flex items-center gap-2"
+              className="px-6 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-lg font-semibold transition-all hover:shadow-lg flex items-center gap-2"
             >
               {isLastStep ? (
                 <>
@@ -340,9 +340,9 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
               onClick={() => setCurrentStep(index)}
               className={`h-2 rounded-full transition-all ${
                 index === currentStep
-                  ? "bg-indigo-600 w-8"
+                  ? "bg-green-700 w-8"
                   : index < currentStep
-                    ? "bg-indigo-400 w-2"
+                    ? "bg-green-400 w-2"
                     : "bg-gray-300 w-2"
               }`}
               aria-label={`Go to step ${index + 1}`}

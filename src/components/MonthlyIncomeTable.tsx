@@ -30,7 +30,7 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
   const exceedsLimit = doubleDays > 60;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6 border border-gray-200">
       {/* Header with collapse button */}
       <div
         className="flex items-center justify-between cursor-pointer mb-4"
@@ -117,7 +117,7 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-lg font-bold text-indigo-600">
+                    <div className="text-lg font-bold text-green-700">
                       {total.toLocaleString("sv-SE")} kr
                     </div>
                   </div>
@@ -194,7 +194,7 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                       <td className="text-right p-2">
                         {data.parent1Total.toLocaleString("sv-SE")} kr
                         {data.parent1Days > 0 ? (
-                          <span className="text-xs text-indigo-600 font-medium ml-1">
+                          <span className="text-xs text-green-700 font-medium ml-1">
                             👶 ({Math.round(data.parent1Days)} {t.daysLabel})
                           </span>
                         ) : (
@@ -205,7 +205,7 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                         <td className="text-right p-2">
                           {data.parent2Total.toLocaleString("sv-SE")} kr
                           {data.parent2Days > 0 ? (
-                            <span className="text-xs text-indigo-600 font-medium ml-1">
+                            <span className="text-xs text-green-700 font-medium ml-1">
                               👶 ({Math.round(data.parent2Days)} {t.daysLabel})
                             </span>
                           ) : (

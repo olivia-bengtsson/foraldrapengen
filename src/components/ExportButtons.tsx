@@ -57,7 +57,7 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border-2 border-green-200">
+    <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
       <h3 className="text-lg font-semibold text-gray-800 mb-3">
         {t.exportTitle}
       </h3>
@@ -66,7 +66,7 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={handleCopy}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 border-2 border-green-500 text-green-700 rounded-lg font-semibold transition-all shadow-sm hover:shadow"
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 border border-green-600 text-green-700 rounded-lg font-semibold transition-all shadow-sm hover:shadow"
         >
           {copied ? (
             <>
@@ -90,7 +90,7 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
         </button>
       </div>
 
-      <div className="mt-4 p-3 bg-white rounded border border-green-200">
+      <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
         <p className="text-xs text-gray-600">
           <strong>{t.exportIncludesLabel}</strong> {t.exportIncludesText}
         </p>

@@ -21,14 +21,14 @@ const Summary: React.FC<SummaryProps> = ({
   const { t } = useLanguage();
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6 border border-gray-200">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         {t.summaryTitle}
       </h3>
       <div className="space-y-4">
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+        <div className="p-4 bg-white rounded-lg border border-gray-200">
           <p className="text-sm text-gray-700 mb-1">{t.totalBenefitLabel}</p>
-          <p className="text-3xl font-bold text-blue-600">
+          <p className="text-3xl font-bold text-green-700">
             {totalBenefitAfterTax.toLocaleString("sv-SE", {
               maximumFractionDigits: 0,
             })}{" "}

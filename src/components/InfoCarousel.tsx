@@ -93,9 +93,9 @@ const InfoCarousel: React.FC<InfoCarouselProps> = ({
   const currentCard = infoCards[currentIndex];
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-indigo-200 overflow-hidden">
+    <div className="bg-gradient-to-r bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-indigo-600 text-white px-4 py-2 flex items-center gap-2">
+      <div className="bg-green-700 text-white px-4 py-2 flex items-center gap-2">
         <BookOpen size={18} />
         <span className="text-sm font-semibold">{t.infoGuideTitle}</span>
         <span className="text-xs ml-auto">
@@ -113,7 +113,7 @@ const InfoCarousel: React.FC<InfoCarouselProps> = ({
           href={currentCard.link}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium"
+          className="text-xs text-green-700 hover:text-green-800 underline font-medium"
         >
           {t.readMoreFK}
         </a>
@@ -123,10 +123,10 @@ const InfoCarousel: React.FC<InfoCarouselProps> = ({
       <div className="px-4 pb-4 flex items-center justify-between">
         <button
           onClick={goToPrevious}
-          className="p-2 hover:bg-indigo-100 rounded-full transition-colors"
+          className="p-2 hover:bg-green-100 rounded-full transition-colors"
           aria-label="Previous card"
         >
-          <ChevronLeft size={20} className="text-indigo-600" />
+          <ChevronLeft size={20} className="text-green-700" />
         </button>
 
         {/* Dots */}
@@ -136,7 +136,7 @@ const InfoCarousel: React.FC<InfoCarouselProps> = ({
               key={index}
               onClick={() => goToCard(index)}
               className={`w-2 h-2 rounded-full transition-colors ${
-                index === currentIndex ? "bg-indigo-600" : "bg-indigo-200"
+                index === currentIndex ? "bg-green-700" : "bg-green-200"
               }`}
               aria-label={`Go to card ${index + 1}`}
             />
@@ -145,10 +145,10 @@ const InfoCarousel: React.FC<InfoCarouselProps> = ({
 
         <button
           onClick={goToNext}
-          className="p-2 hover:bg-indigo-100 rounded-full transition-colors"
+          className="p-2 hover:bg-green-100 rounded-full transition-colors"
           aria-label="Next card"
         >
-          <ChevronRight size={20} className="text-indigo-600" />
+          <ChevronRight size={20} className="text-green-700" />
         </button>
       </div>
     </div>

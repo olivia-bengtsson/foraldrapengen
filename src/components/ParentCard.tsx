@@ -42,16 +42,16 @@ const ParentCard: React.FC<ParentCardProps> = ({
   const validation = validateNoOverlap(parent.periods);
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-4 md:p-6 border-2 border-indigo-200">
+    <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 mb-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+        <div className="w-12 h-12 flex-shrink-0 rounded-full bg-green-700 flex items-center justify-center text-white font-bold text-lg">
           {index + 1}
         </div>
         <input
           type="text"
           value={parent.name}
           onChange={(e) => onUpdate("name", e.target.value)}
-          className="text-xl font-bold bg-white border-2 border-indigo-300 rounded px-3 py-2 flex-1 min-w-0"
+          className="text-xl font-bold bg-white border border-gray-300 rounded px-3 py-2 flex-1 min-w-0"
         />
       </div>
 
@@ -72,7 +72,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
             value={parent.monthlySalary}
             onChange={(e) => onUpdate("monthlySalary", Number(e.target.value))}
             min="0"
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-green-600 focus:outline-none"
             placeholder="35000"
           />
         </div>
@@ -94,16 +94,16 @@ const ParentCard: React.FC<ParentCardProps> = ({
             onChange={(e) => onUpdate("employerTopUp", Number(e.target.value))}
             min="0"
             max="100"
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:outline-none"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-green-600 focus:outline-none"
             placeholder="10"
           />
         </div>
 
         {/* Periods Section */}
-        <div className="border-t-2 border-indigo-200 pt-4">
+        <div className="border-t border-gray-200 pt-4">
           <button
             onClick={() => setShowPeriods(!showPeriods)}
-            className="w-full flex items-center justify-between p-3 bg-white rounded-lg border-2 border-indigo-300 hover:bg-indigo-50 transition-colors"
+            className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-gray-300 hover:bg-green-50 transition-colors"
           >
             <div className="flex items-center gap-2">
               {showPeriods ? (
@@ -118,7 +118,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
             </div>
             <div className="text-sm text-gray-600">
               {language === "sv" ? "Totalt:" : "Total:"}{" "}
-              <span className="font-bold text-indigo-900">{totalDays}</span>{" "}
+              <span className="font-bold text-green-900">{totalDays}</span>{" "}
               {language === "sv" ? "dagar" : "days"}
             </div>
           </button>
@@ -150,7 +150,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
 
               <button
                 onClick={onAddPeriod}
-                className="w-full flex items-center justify-center gap-2 p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg border-2 border-indigo-300 transition-colors"
+                className="w-full flex items-center justify-center gap-2 p-3 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg border border-gray-300 transition-colors"
               >
                 <Plus size={20} />
                 <span className="font-semibold">
@@ -165,7 +165,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-600">{t.sgiLabel}</p>
-              <p className="font-semibold text-indigo-900">
+              <p className="font-semibold text-green-900">
                 {benefits.sgi.toLocaleString("sv-SE", {
                   maximumFractionDigits: 0,
                 })}{" "}
@@ -174,7 +174,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
             </div>
             <div>
               <p className="text-gray-600">{t.dailyBenefitAfterTaxLabel}</p>
-              <p className="font-semibold text-indigo-900">
+              <p className="font-semibold text-green-900">
                 {benefits.dailyBenefitAfterTax.toLocaleString("sv-SE", {
                   maximumFractionDigits: 0,
                 })}{" "}
@@ -183,7 +183,7 @@ const ParentCard: React.FC<ParentCardProps> = ({
             </div>
             <div>
               <p className="text-gray-600">{t.leaveLabel}</p>
-              <p className="font-semibold text-indigo-900">
+              <p className="font-semibold text-green-900">
                 {benefits.monthsNeeded.toFixed(1)} {t.monthsLabel}
               </p>
             </div>

@@ -17,7 +17,7 @@ const LanguageSwitcher: React.FC = () => {
         onClick={() => handleLanguageChange("sv")}
         className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
           language === "sv"
-            ? "bg-indigo-600 text-white"
+            ? "bg-green-700 text-white"
             : "text-gray-700 hover:bg-gray-100"
         }`}
       >
@@ -27,7 +27,7 @@ const LanguageSwitcher: React.FC = () => {
         onClick={() => handleLanguageChange("en")}
         className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
           language === "en"
-            ? "bg-indigo-600 text-white"
+            ? "bg-green-700 text-white"
             : "text-gray-700 hover:bg-gray-100"
         }`}
       >

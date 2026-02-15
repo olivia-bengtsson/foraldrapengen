@@ -14,7 +14,7 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ title, content, link }) => {
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="ml-2 text-indigo-600 hover:text-indigo-800 transition-colors"
+        className="ml-2 text-green-700 hover:text-green-800 transition-colors"
         type="button"
       >
         <Info size={18} />
@@ -29,7 +29,7 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ title, content, link }) => {
           />
 
           {/* Tooltip */}
-          <div className="absolute z-50 w-80 p-4 bg-white rounded-lg shadow-xl border-2 border-indigo-200 left-0 mt-2">
+          <div className="absolute z-50 w-80 p-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 left-0 mt-2">
             <div className="flex items-start justify-between mb-2">
               <h4 className="font-semibold text-gray-800 text-sm">{title}</h4>
               <button
@@ -45,7 +45,7 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ title, content, link }) => {
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                className="text-xs text-green-700 hover:text-green-800 underline"
               >
                 Läs mer på Försäkringskassan →
               </a>

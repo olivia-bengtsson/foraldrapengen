@@ -111,7 +111,7 @@ const FlashcardModal: React.FC<FlashcardModalProps> = ({ show, onClose }) => {
               href={currentCard.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-600 hover:text-indigo-800 underline font-medium"
+              className="text-green-700 hover:text-green-800 underline font-medium"
             >
               Läs mer på Försäkringskassan →
             </a>
@@ -135,7 +135,7 @@ const FlashcardModal: React.FC<FlashcardModalProps> = ({ show, onClose }) => {
                 key={index}
                 onClick={() => setCurrentIndex(index)}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? "bg-indigo-600" : "bg-gray-300"
+                  index === currentIndex ? "bg-green-700" : "bg-gray-300"
                 }`}
               />
             ))}
@@ -143,7 +143,7 @@ const FlashcardModal: React.FC<FlashcardModalProps> = ({ show, onClose }) => {
 
           <button
             onClick={goToNext}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg transition-colors"
           >
             Nästa
             <ChevronRight size={20} />

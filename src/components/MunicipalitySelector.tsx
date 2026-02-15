@@ -45,7 +45,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
   };
 
   return (
-    <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-lg p-6 border-2 border-green-200">
+    <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <MapPin size={20} />
