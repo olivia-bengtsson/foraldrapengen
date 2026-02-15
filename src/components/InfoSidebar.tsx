@@ -24,7 +24,7 @@ const InfoSidebar: React.FC<InfoSidebarProps> = ({
   selectedCard,
   onSelectCard,
 }) => {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
 
   const infoCards: InfoCard[] = [
     {
