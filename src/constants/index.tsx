@@ -1,6 +1,5 @@
 // Konstanter och exempeldata för kalkylatorn
 
-import { Parent } from "../types";
 import { generatePeriodId } from "../utils/periodHelpers";
 
 // Försäkringskassan länkar
@@ -35,7 +34,7 @@ const getTodayDate = () => {
 const getDateAfterDays = (
   startDate: string,
   days: number,
-  daysPerWeek: number
+  daysPerWeek: number,
 ) => {
   try {
     const start = new Date(startDate);
@@ -68,8 +67,6 @@ const endDateMoney2 = getDateAfterDays(startDateMoney2, 240, 7);
 const endDateBalanced1 = getDateAfterDays(today, 210, 6);
 const startDateBalanced2Temp = new Date(endDateBalanced1);
 startDateBalanced2Temp.setDate(startDateBalanced2Temp.getDate() + 1);
-const startDateBalanced2 = startDateBalanced2Temp.toISOString().split("T")[0];
-const endDateBalanced2 = getDateAfterDays(startDateBalanced2, 210, 5);
 
 const endDateSingle = getDateAfterDays(today, 480, 5);
 
@@ -184,12 +181,12 @@ export const EXAMPLES = {
             startDate: getDateAfterDays(
               getDateAfterDays(today, 105, 5),
               105,
-              5
+              5,
             ), // After parent 2's first period
             endDate: getDateAfterDays(
               getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
               105,
-              5
+              5,
             ),
           },
         ],
@@ -216,16 +213,16 @@ export const EXAMPLES = {
             startDate: getDateAfterDays(
               getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
               105,
-              5
+              5,
             ), // After parent 1's second period
             endDate: getDateAfterDays(
               getDateAfterDays(
                 getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
                 105,
-                5
+                5,
               ),
               135,
-              5
+              5,
             ),
           },
         ],

@@ -1,5 +1,5 @@
 import React from "react";
-import { Parent, ParentBenefits, ParentalPeriod } from "../../types";
+import { Parent, ParentBenefits } from "../../types";
 import ParentCard from "../ParentCard";
 import DaysSummary from "./DaysSummary";
 

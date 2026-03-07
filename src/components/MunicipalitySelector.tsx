@@ -21,7 +21,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
   isChurchMember,
   onChurchMemberChange,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const [showInfo, setShowInfo] = useState(false);
 
   const handleMunicipalityChange = (municipality: string) => {
@@ -39,7 +39,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
   const getCurrentTax = () => {
     if (!selectedMunicipality) return TAX_STATS_2025.average;
     const municipality = MAJOR_MUNICIPALITIES.find(
-      (m) => m.name === selectedMunicipality
+      (m) => m.name === selectedMunicipality,
     );
     return municipality?.totalTax || TAX_STATS_2025.average;
   };
@@ -140,7 +140,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
                   <option key={m.name} value={m.name}>
                     {m.name} ({m.totalTax}%)
                   </option>
-                )
+                ),
               )}
             </optgroup>
             <optgroup
@@ -149,7 +149,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
               }
             >
               {MAJOR_MUNICIPALITIES.filter(
-                (m) => m.county === "Västra Götaland"
+                (m) => m.county === "Västra Götaland",
               ).map((m) => (
                 <option key={m.name} value={m.name}>
                   {m.name} ({m.totalTax}%)
@@ -162,7 +162,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
                   <option key={m.name} value={m.name}>
                     {m.name} ({m.totalTax}%)
                   </option>
-                )
+                ),
               )}
             </optgroup>
             <optgroup
@@ -172,7 +172,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
             >
               {MAJOR_MUNICIPALITIES.filter(
                 (m) =>
-                  !["Stockholm", "Västra Götaland", "Skåne"].includes(m.county)
+                  !["Stockholm", "Västra Götaland", "Skåne"].includes(m.county),
               ).map((m) => (
                 <option key={m.name} value={m.name}>
                   {m.name} ({m.totalTax}%)
