@@ -24,7 +24,9 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
   // Check if any month has double days (both parents have days)
   const hasDoubleDays =
     numParents === 2 &&
-    monthlyData.some((data) => data.parent1Days > 0 && data.parent2Days > 0);
+    monthlyData.some(
+      (data) => data.parent1Days > 0 && (data.parent2Days ?? 0) > 0,
+    );
 
   // Check if exceeding 60 double days limit
   const exceedsLimit = doubleDays > 60;
@@ -53,6 +55,33 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
           <p className="text-sm text-gray-600 mb-4">
             {t.monthlyIncomeSubtitle}
           </p>
+
+          {/* Legend for day types */}
+          <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold text-blue-700">
+                💡 {language === "sv" ? "Förklaring:" : "Explanation:"}
+              </span>
+            </p>
+            <ul className="text-xs text-gray-700 mt-2 space-y-1">
+              <li>
+                <span className="text-green-700 font-medium">👶 Grön</span> ={" "}
+                {language === "sv"
+                  ? "Sjukpenningnivå (~80% av lön + PAG)"
+                  : "Sickness benefit level (~80% salary + employer top-up)"}
+              </li>
+              <li>
+                <span className="text-orange-600 font-medium">⚠️ Orange</span> ={" "}
+                {language === "sv"
+                  ? "Lägstanivå (180 kr/dag, utan PAG)"
+                  : "Minimum level (180 SEK/day, no employer top-up)"}
+              </li>
+              <li>
+                <span className="text-gray-400 font-medium">💼 Grå</span> ={" "}
+                {language === "sv" ? "Arbetar (lön)" : "Working (salary)"}
+              </li>
+            </ul>
+          </div>
 
           {/* Double days explanation */}
           {hasDoubleDays && (
@@ -96,8 +125,8 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
               const isDoubleDaysMonth =
                 numParents === 2 &&
                 data.parent1Days > 0 &&
-                data.parent2Days > 0;
-              const total = data.parent1Total + data.parent2Total;
+                (data.parent2Days ?? 0) > 0;
+              const total = data.parent1Total + (data.parent2Total ?? 0);
 
               return (
                 <div
@@ -128,8 +157,22 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                       <span className="font-medium">
                         {data.parent1Total.toLocaleString("sv-SE")} kr
                         {data.parent1Days > 0 && (
-                          <span className="text-xs text-gray-500 ml-1">
-                            ({Math.round(data.parent1Days)} {t.daysLabel})
+                          <span
+                            className={`text-xs ml-1 ${
+                              data.parent1LowDays && data.parent1LowDays > 0
+                                ? "text-orange-700"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            ({Math.round(data.parent1Days)} {t.daysLabel}
+                            {data.parent1LowDays && data.parent1LowDays > 0 && (
+                              <span className="text-orange-600">
+                                {" "}
+                                - ⚠️ {Math.round(data.parent1LowDays)}{" "}
+                                {language === "sv" ? "lägst" : "min"}
+                              </span>
+                            )}
+                            )
                           </span>
                         )}
                       </span>
@@ -139,10 +182,25 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                       <div className="flex justify-between">
                         <span className="text-gray-600">{parent2Name}:</span>
                         <span className="font-medium">
-                          {data.parent2Total.toLocaleString("sv-SE")} kr
-                          {data.parent2Days > 0 && (
-                            <span className="text-xs text-gray-500 ml-1">
-                              ({Math.round(data.parent2Days)} {t.daysLabel})
+                          {data.parent2Total?.toLocaleString("sv-SE") ?? "0"} kr
+                          {(data.parent2Days ?? 0) > 0 && (
+                            <span
+                              className={`text-xs ml-1 ${
+                                data.parent2LowDays && data.parent2LowDays > 0
+                                  ? "text-orange-700"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              ({Math.round(data.parent2Days ?? 0)} {t.daysLabel}
+                              {data.parent2LowDays &&
+                                data.parent2LowDays > 0 && (
+                                  <span className="text-orange-600">
+                                    {" "}
+                                    - ⚠️ {Math.round(data.parent2LowDays)}{" "}
+                                    {language === "sv" ? "lägst" : "min"}
+                                  </span>
+                                )}
+                              )
                             </span>
                           )}
                         </span>
@@ -172,7 +230,7 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                   const isDoubleDaysMonth =
                     numParents === 2 &&
                     data.parent1Days > 0 &&
-                    data.parent2Days > 0;
+                    (data.parent2Days ?? 0) > 0;
 
                   return (
                     <tr
@@ -194,8 +252,22 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                       <td className="text-right p-2">
                         {data.parent1Total.toLocaleString("sv-SE")} kr
                         {data.parent1Days > 0 ? (
-                          <span className="text-xs text-green-700 font-medium ml-1">
+                          <span
+                            className={`text-xs font-medium ml-1 ${
+                              data.parent1LowDays && data.parent1LowDays > 0
+                                ? "text-orange-700"
+                                : "text-green-700"
+                            }`}
+                          >
                             👶 ({Math.round(data.parent1Days)} {t.daysLabel})
+                            {data.parent1LowDays && data.parent1LowDays > 0 && (
+                              <span className="block text-orange-600 text-xs">
+                                ⚠️ {Math.round(data.parent1LowDays)}{" "}
+                                {language === "sv"
+                                  ? "lägstanivå"
+                                  : "minimum level"}
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="text-xs text-gray-400 ml-1">💼</span>
@@ -203,10 +275,26 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                       </td>
                       {numParents === 2 && (
                         <td className="text-right p-2">
-                          {data.parent2Total.toLocaleString("sv-SE")} kr
-                          {data.parent2Days > 0 ? (
-                            <span className="text-xs text-green-700 font-medium ml-1">
-                              👶 ({Math.round(data.parent2Days)} {t.daysLabel})
+                          {data.parent2Total?.toLocaleString("sv-SE") ?? "0"} kr
+                          {(data.parent2Days ?? 0) > 0 ? (
+                            <span
+                              className={`text-xs font-medium ml-1 ${
+                                data.parent2LowDays && data.parent2LowDays > 0
+                                  ? "text-orange-700"
+                                  : "text-green-700"
+                              }`}
+                            >
+                              👶 ({Math.round(data.parent2Days ?? 0)}{" "}
+                              {t.daysLabel})
+                              {data.parent2LowDays &&
+                                data.parent2LowDays > 0 && (
+                                  <span className="block text-orange-600 text-xs">
+                                    ⚠️ {Math.round(data.parent2LowDays)}{" "}
+                                    {language === "sv"
+                                      ? "lägstanivå"
+                                      : "minimum level"}
+                                  </span>
+                                )}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-400 ml-1">
@@ -216,9 +304,9 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
                         </td>
                       )}
                       <td className="text-right p-2 font-semibold">
-                        {(data.parent1Total + data.parent2Total).toLocaleString(
-                          "sv-SE"
-                        )}{" "}
+                        {(
+                          data.parent1Total + (data.parent2Total ?? 0)
+                        ).toLocaleString("sv-SE")}{" "}
                         kr
                       </td>
                     </tr>

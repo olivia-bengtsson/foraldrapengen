@@ -28,6 +28,7 @@ export const migrateParentToPeriods = (oldParent: any): Parent => {
     type: oldParent.type,
     monthlySalary: oldParent.monthlySalary,
     employerTopUp: oldParent.employerTopUp,
+    employerTopUpDays: oldParent.employerTopUpDays || 360, // Default 360 if missing
     periods: [period],
   };
 };

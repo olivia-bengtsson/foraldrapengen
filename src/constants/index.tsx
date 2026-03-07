@@ -1,5 +1,6 @@
 // Konstanter och exempeldata för kalkylatorn
 
+import { Parent } from "../types";
 import { generatePeriodId } from "../utils/periodHelpers";
 
 // Försäkringskassan länkar
@@ -67,6 +68,8 @@ const endDateMoney2 = getDateAfterDays(startDateMoney2, 240, 7);
 const endDateBalanced1 = getDateAfterDays(today, 210, 6);
 const startDateBalanced2Temp = new Date(endDateBalanced1);
 startDateBalanced2Temp.setDate(startDateBalanced2Temp.getDate() + 1);
+const startDateBalanced2 = startDateBalanced2Temp.toISOString().split("T")[0];
+const endDateBalanced2 = getDateAfterDays(startDateBalanced2, 210, 5);
 
 const endDateSingle = getDateAfterDays(today, 480, 5);
 
@@ -83,6 +86,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -99,6 +103,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -122,6 +127,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 45000,
         employerTopUp: 20,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -138,6 +144,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 45000,
         employerTopUp: 20,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -161,6 +168,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 38000,
         employerTopUp: 10,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -192,6 +200,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 32000,
         employerTopUp: 10,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),
@@ -233,6 +242,7 @@ export const EXAMPLES = {
         type: "employed" as const,
         monthlySalary: 35000,
         employerTopUp: 10,
+        employerTopUpDays: 360,
         periods: [
           {
             id: generatePeriodId(),

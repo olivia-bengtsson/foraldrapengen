@@ -1,33 +1,35 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Baby, Calendar } from "lucide-react";
+import { Baby } from "lucide-react";
 import {
   Parent,
   ParentBenefits,
   MonthlyData,
   TabType,
-  ParentalPeriod,
+  MonthlyIncomeResult,
 } from "./types";
 import {
   calculateParentBenefits,
   getMonthlyIncomeForParent,
+  validateAllRules,
 } from "./utils/calculations";
-import { EXAMPLES, TOTAL_PARENTAL_DAYS, ExampleKey } from "./constants";
-import {
-  getTotalDaysFromPeriods,
-  generatePeriodId,
-} from "./utils/periodHelpers";
-import ParentCard from "./components/ParentCard";
-import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
+import { EXAMPLES, ExampleKey } from "./constants";
+import { generatePeriodId } from "./utils/periodHelpers";
 import Summary from "./components/Summary";
+import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
 import ExamplesTab from "./components/ExamplesTab";
-import InfoTooltip from "./components/InfoTooltip";
 import InfoCarousel from "./components/InfoCarousel";
 import InfoSidebar from "./components/InfoSidebar";
 import ExportButtons from "./components/ExportButtons";
 import LanguageSwitcher from "./components/LanguageSwitcher";
-import MunicipalitySelector from "./components/MunicipalitySelector";
 import OnboardingGuide from "./components/OnboardingGuide";
 import FeedbackFooter from "./components/FeedbackFooter";
+import CollapsibleSection from "./components/CollapsibleSection";
+
+// NEW: Extracted components
+import SettingsSection from "./components/calculator/SettingsSection";
+import ParentsSection from "./components/calculator/ParentsSection";
+import ValidationWarnings from "./components/calculator/ValidationWarnings";
+
 import { useLanguage } from "./i18n/LanguageContext";
 
 const ForaldrapengenCalculator = () => {
@@ -49,6 +51,17 @@ const ForaldrapengenCalculator = () => {
   const [taxRate, setTaxRate] = useState<number>(0.3); // 30% default
   const [isChurchMember, setIsChurchMember] = useState<boolean>(false);
 
+  // Validation warnings
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+
+  // Progressive flow state - which sections are open/completed
+  const [openSections, setOpenSections] = useState({
+    settings: true, // Settings (antal föräldrar, födelsedatum, kommun)
+    parents: false, // Föräldrakort
+    summary: false, // Sammanfattning
+    table: false, // Månadstabell
+  });
+
   // Helper functions for date calculations
   const getTodayDate = () => {
     return new Date().toISOString().split("T")[0];
@@ -57,28 +70,21 @@ const ForaldrapengenCalculator = () => {
   const getDateAfterDays = (
     startDate: string,
     days: number,
-    daysPerWeek: number
+    daysPerWeek: number,
   ) => {
-    try {
-      const start = new Date(startDate);
-      if (isNaN(start.getTime())) {
-        return getTodayDate(); // Fallback to today if invalid
-      }
-      const totalDays = Math.ceil((days * 7) / daysPerWeek);
-      start.setDate(start.getDate() + totalDays);
-      return start.toISOString().split("T")[0];
-    } catch (error) {
-      console.error("Error calculating date:", error);
-      return getTodayDate();
-    }
+    const start = new Date(startDate);
+    const totalCalendarDays = Math.ceil((days * 7) / daysPerWeek);
+    start.setDate(start.getDate() + totalCalendarDays);
+    return start.toISOString().split("T")[0];
   };
 
-  // Calculate initial dates once
+  // Calculate initial dates
   const initialToday = getTodayDate();
   const initialEndDate1 = getDateAfterDays(initialToday, 240, 5);
-  const initialStartDate2Date = new Date(initialEndDate1);
-  initialStartDate2Date.setDate(initialStartDate2Date.getDate() + 1);
-  const initialStartDate2 = initialStartDate2Date.toISOString().split("T")[0];
+
+  const startDate2Temp = new Date(initialEndDate1);
+  startDate2Temp.setDate(startDate2Temp.getDate() + 1);
+  const initialStartDate2 = startDate2Temp.toISOString().split("T")[0];
   const initialEndDate2 = getDateAfterDays(initialStartDate2, 240, 5);
 
   const [parents, setParents] = useState<Parent[]>([
@@ -88,6 +94,7 @@ const ForaldrapengenCalculator = () => {
       type: "employed",
       monthlySalary: 35000,
       employerTopUp: 10,
+      employerTopUpDays: 360,
       periods: [
         {
           id: generatePeriodId(),
@@ -104,6 +111,7 @@ const ForaldrapengenCalculator = () => {
       type: "employed",
       monthlySalary: 35000,
       employerTopUp: 10,
+      employerTopUpDays: 360,
       periods: [
         {
           id: generatePeriodId(),
@@ -118,7 +126,7 @@ const ForaldrapengenCalculator = () => {
 
   const handleMunicipalityChange = (
     municipality: string,
-    newTaxRate: number
+    newTaxRate: number,
   ) => {
     setSelectedMunicipality(municipality);
     setTaxRate(newTaxRate);
@@ -128,12 +136,37 @@ const ForaldrapengenCalculator = () => {
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
     if (!hasSeenOnboarding) {
-      // Show onboarding after a short delay for better UX
       setTimeout(() => {
         setShowOnboarding(true);
       }, 500);
     }
   }, []);
+
+  // Validate parental leave rules
+  useEffect(() => {
+    const validation = validateAllRules(parents, numParents, birthDate);
+    setValidationWarnings(validation.allWarnings);
+  }, [parents, numParents, birthDate]);
+
+  // Toggle functions for manual control
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
+  // Navigate to next section with smooth scroll
+  const goToNextSection = (
+    currentSection: keyof typeof openSections,
+    nextSection: keyof typeof openSections,
+  ) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [currentSection]: false, // Close current section
+      [nextSection]: true, // Open next section
+    }));
+  };
 
   // Beräkna resultat för alla föräldrar (nu med taxRate)
   const parentResults: ParentBenefits[] = useMemo(() => {
@@ -143,263 +176,185 @@ const ForaldrapengenCalculator = () => {
   }, [parents, numParents, taxRate]);
 
   // Beräkna totala dagar och återstående
-  const totalDaysTaken = useMemo(() => {
-    return parents
-      .slice(0, numParents)
-      .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
-  }, [parents, numParents]);
-
   // Beräkna automatiskt dubbeldagar baserat på överlappande perioder
   const calculatedDoubleDays = useMemo(() => {
     if (numParents !== 2) return 0;
 
-    const parent1 = parents[0];
-    const parent2 = parents[1];
+    const parent1Periods = parents[0].periods;
+    const parent2Periods = parents[1].periods;
 
-    let totalOverlap = 0;
+    let totalDoubleDays = 0;
 
-    // Compare all periods from parent1 with all periods from parent2
-    for (const p1 of parent1.periods) {
-      for (const p2 of parent2.periods) {
-        // Parse dates
-        const start1 = new Date(p1.startDate);
-        const end1 = new Date(p1.endDate);
-        const start2 = new Date(p2.startDate);
-        const end2 = new Date(p2.endDate);
+    for (const p1 of parent1Periods) {
+      const p1Start = new Date(p1.startDate);
+      const p1End = new Date(p1.endDate);
 
-        // Check if periods overlap
+      for (const p2 of parent2Periods) {
+        const p2Start = new Date(p2.startDate);
+        const p2End = new Date(p2.endDate);
+
         const overlapStart = new Date(
-          Math.max(start1.getTime(), start2.getTime())
+          Math.max(p1Start.getTime(), p2Start.getTime()),
         );
-        const overlapEnd = new Date(Math.min(end1.getTime(), end2.getTime()));
+        const overlapEnd = new Date(Math.min(p1End.getTime(), p2End.getTime()));
 
-        // If no overlap, continue to next comparison
-        if (overlapStart > overlapEnd) continue;
-
-        // Calculate overlapping days
-        let overlapDays = 0;
-        const current = new Date(overlapStart);
-
-        while (current <= overlapEnd) {
-          const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
-
-          // Simplified: assume they take weekdays if daysPerWeek < 7
-          const parent1TakesThisDay =
-            p1.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
-          const parent2TakesThisDay =
-            p2.daysPerWeek === 7 || (dayOfWeek >= 1 && dayOfWeek <= 5);
-
-          if (parent1TakesThisDay && parent2TakesThisDay) {
-            overlapDays++;
-          }
-
-          current.setDate(current.getDate() + 1);
+        if (overlapStart <= overlapEnd) {
+          const overlapDays =
+            Math.ceil(
+              (overlapEnd.getTime() - overlapStart.getTime()) /
+                (1000 * 60 * 60 * 24),
+            ) + 1;
+          const minDaysPerWeek = Math.min(p1.daysPerWeek, p2.daysPerWeek);
+          const effectiveDoubleDays = Math.ceil(
+            (overlapDays * minDaysPerWeek) / 7,
+          );
+          totalDoubleDays += effectiveDoubleDays;
         }
-
-        // Adjust based on actual days per week
-        const adjustmentFactor = Math.min(p1.daysPerWeek, p2.daysPerWeek) / 7;
-        totalOverlap += Math.round(overlapDays * adjustmentFactor);
       }
     }
 
-    return totalOverlap;
+    return totalDoubleDays;
   }, [parents, numParents]);
 
-  const daysRemaining =
-    TOTAL_PARENTAL_DAYS - totalDaysTaken - calculatedDoubleDays;
-
-  // Beräkna totala ersättningar
-  const { totalBenefitBeforeTax, totalBenefitAfterTax } = useMemo(() => {
-    const beforeTax = parentResults.reduce(
-      (sum, r) => sum + r.totalBenefitBeforeTax,
-      0
-    );
-    const afterTax = parentResults.reduce(
-      (sum, r) => sum + r.totalBenefitAfterTax,
-      0
-    );
-    return { totalBenefitBeforeTax: beforeTax, totalBenefitAfterTax: afterTax };
-  }, [parentResults]);
-
   // Beräkna månadsinkomst
-  const getMonthlyData = useMemo((): MonthlyData[] => {
-    // Get all dates from all periods of all parents
+  const monthlyData = useMemo((): MonthlyData[] => {
     const allDates = parents
       .slice(0, numParents)
       .flatMap((p) =>
-        p.periods.flatMap((period) => [
+        p.periods.map((period) => [
           new Date(period.startDate),
           new Date(period.endDate),
-        ])
-      );
+        ]),
+      )
+      .flat();
 
     if (allDates.length === 0) return [];
 
     const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
     const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
 
-    const monthlyData: MonthlyData[] = [];
+    const months: MonthlyData[] = [];
     const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
 
     while (current <= maxDate) {
       const year = current.getFullYear();
       const month = current.getMonth();
 
-      const parent1Data = getMonthlyIncomeForParent(
+      const parent1Result: MonthlyIncomeResult = getMonthlyIncomeForParent(
         parents[0],
         parentResults[0],
         year,
         month,
-        taxRate
+        taxRate,
       );
 
-      let parent2Data = { total: 0, days: 0 };
-      if (numParents === 2 && parentResults[1]) {
-        parent2Data = getMonthlyIncomeForParent(
-          parents[1],
-          parentResults[1],
-          year,
-          month,
-          taxRate
-        );
-      }
+      const parent2Result: MonthlyIncomeResult | undefined =
+        numParents === 2
+          ? getMonthlyIncomeForParent(
+              parents[1],
+              parentResults[1],
+              year,
+              month,
+              taxRate,
+            )
+          : undefined;
 
-      monthlyData.push({
+      months.push({
         month: `${year}-${String(month + 1).padStart(2, "0")}`,
-        parent1Total: parent1Data.total,
-        parent1Days: parent1Data.days,
-        parent2Total: parent2Data.total,
-        parent2Days: parent2Data.days,
+        parent1Total: parent1Result.total,
+        parent2Total: parent2Result?.total,
+        parent1Days: parent1Result.days,
+        parent2Days: parent2Result?.days,
+        parent1HighDays: parent1Result.highDays,
+        parent1LowDays: parent1Result.lowDays,
+        parent2HighDays: parent2Result?.highDays,
+        parent2LowDays: parent2Result?.lowDays,
       });
 
       current.setMonth(current.getMonth() + 1);
     }
 
-    return monthlyData;
-  }, [parents, parentResults, numParents, taxRate]);
+    return months;
+  }, [parents, numParents, taxRate, parentResults]);
 
-  // Uppdatera förälder (only parent-level fields like name, salary, type)
-  const updateParent = (id: number, field: keyof Parent, value: any) => {
+  // Parent update handlers
+  const updateParent = (id: number, field: string, value: any) => {
     setParents((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          // Only update parent-level fields
-          return { ...p, [field]: value };
-        }
-        return p;
-      })
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
     );
   };
 
-  // Update a specific period within a parent
   const updatePeriod = (
     parentId: number,
     periodId: string,
-    field: keyof ParentalPeriod,
-    value: any
+    field: string,
+    value: any,
   ) => {
     setParents((prev) =>
       prev.map((parent) => {
-        if (parent.id === parentId) {
-          return {
-            ...parent,
-            periods: parent.periods.map((period) => {
-              if (period.id === periodId) {
-                let validatedValue = value;
+        if (parent.id !== parentId) return parent;
 
-                // Validate daysToTake - cannot exceed 480
-                if (field === "daysToTake") {
-                  validatedValue = Math.max(
-                    0,
-                    Math.min(480, Number(value) || 0)
-                  );
-                }
-
-                // Validate daysPerWeek - must be between 1 and 7
-                if (field === "daysPerWeek") {
-                  validatedValue = Math.max(1, Math.min(7, Number(value) || 5));
-                }
-
-                const updatedPeriod = { ...period, [field]: validatedValue };
-
-                // Auto-calculate end date based on start, days and days/week
-                if (
-                  field === "startDate" ||
-                  field === "daysToTake" ||
-                  field === "daysPerWeek"
-                ) {
-                  try {
-                    const start = new Date(updatedPeriod.startDate);
-                    if (
-                      !isNaN(start.getTime()) &&
-                      updatedPeriod.daysToTake > 0 &&
-                      updatedPeriod.daysPerWeek > 0
-                    ) {
-                      const weeksNeeded = Math.ceil(
-                        updatedPeriod.daysToTake / updatedPeriod.daysPerWeek
-                      );
-                      start.setDate(start.getDate() + weeksNeeded * 7);
-                      updatedPeriod.endDate = start.toISOString().split("T")[0];
-                    }
-                  } catch (error) {
-                    console.error("Error calculating end date:", error);
-                  }
-                }
-
-                return updatedPeriod;
-              }
-              return period;
-            }),
-          };
-        }
-        return parent;
-      })
+        return {
+          ...parent,
+          periods: parent.periods.map((period) =>
+            period.id === periodId ? { ...period, [field]: value } : period,
+          ),
+        };
+      }),
     );
   };
 
-  // Add a new period to a parent
   const addPeriod = (parentId: number) => {
     setParents((prev) =>
       prev.map((parent) => {
-        if (parent.id === parentId) {
-          const newPeriod: ParentalPeriod = {
-            id: generatePeriodId(),
-            startDate: getTodayDate(),
-            endDate: getDateAfterDays(getTodayDate(), 60, 5),
-            daysToTake: 60,
-            daysPerWeek: 5,
-          };
+        if (parent.id !== parentId) return parent;
 
-          return {
-            ...parent,
-            periods: [...parent.periods, newPeriod],
-          };
-        }
-        return parent;
-      })
+        const lastPeriod = parent.periods[parent.periods.length - 1];
+        const lastEndDate = lastPeriod
+          ? new Date(lastPeriod.endDate)
+          : new Date();
+        const newStartDateObj = new Date(lastEndDate);
+        newStartDateObj.setDate(newStartDateObj.getDate() + 1);
+        const newStartDate = newStartDateObj.toISOString().split("T")[0];
+        const newEndDate = getDateAfterDays(newStartDate, 30, 5);
+
+        const newPeriod = {
+          id: generatePeriodId(),
+          daysToTake: 30,
+          daysPerWeek: 5,
+          startDate: newStartDate,
+          endDate: newEndDate,
+        };
+
+        return {
+          ...parent,
+          periods: [...parent.periods, newPeriod],
+        };
+      }),
     );
   };
 
-  // Delete a period from a parent (only if more than 1 period)
   const deletePeriod = (parentId: number, periodId: string) => {
     setParents((prev) =>
       prev.map((parent) => {
-        if (parent.id === parentId && parent.periods.length > 1) {
-          return {
-            ...parent,
-            periods: parent.periods.filter((p) => p.id !== periodId),
-          };
+        if (parent.id !== parentId) return parent;
+
+        if (parent.periods.length === 1) {
+          return parent;
         }
-        return parent;
-      })
+
+        return {
+          ...parent,
+          periods: parent.periods.filter((p) => p.id !== periodId),
+        };
+      }),
     );
   };
 
-  // Ladda exempel
+  // Load example
   const loadExample = (exampleKey: ExampleKey) => {
     const example = EXAMPLES[exampleKey];
     setNumParents(example.parents.length as 1 | 2);
-    // Examples are now in the correct format with periods - no migration needed!
     setParents(example.parents);
     setActiveTab("calculator");
   };
@@ -412,29 +367,19 @@ const ForaldrapengenCalculator = () => {
         onClose={() => setShowOnboarding(false)}
       />
 
-      <div className="max-w-7xl mx-auto">
-        {/* Language Switcher and Guide Button */}
-        <div className="flex justify-between items-center mb-4">
-          <button
-            onClick={() => setShowOnboarding(true)}
-            className="group px-4 py-2 bg-white hover:bg-green-50 text-green-600 rounded-lg text-sm font-medium transition-all border-2 border-green-200 hover:border-green-300 shadow-sm hover:shadow-md flex items-center gap-2"
-          >
-            <Baby
-              size={18}
-              className="group-hover:scale-110 transition-transform"
-            />
-            {language === "sv" ? "Visa guide" : "Show guide"}
-          </button>
-          <LanguageSwitcher />
-        </div>
-
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <Baby className="text-green-600" size={48} />
-            <h1 className="text-4xl font-bold text-gray-800">{t.appTitle}</h1>
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Baby className="text-green-700" size={40} />
+            <div>
+              <h1 className="text-3xl font-bold text-green-900">
+                {t.appTitle}
+              </h1>
+              <p className="text-sm text-gray-600">{t.appSubtitle}</p>
+            </div>
           </div>
-          <p className="text-gray-600 text-lg">{t.appSubtitle}</p>
+          <LanguageSwitcher />
         </div>
 
         {/* Info Carousel - Always visible on mobile and tablet */}
@@ -476,388 +421,170 @@ const ForaldrapengenCalculator = () => {
             {activeTab === "examples" ? (
               <ExamplesTab onLoadExample={loadExample} />
             ) : (
-              <>
-                {/* Settings */}
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Calendar size={24} />
-                    {t.settingsTitle}
-                  </h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {t.numParentsLabel}
-                        </label>
-                        <InfoTooltip
-                          title={t.numParentsTooltipTitle}
-                          content={t.numParentsTooltipContent}
-                          link="https://www.forsakringskassan.se/foralder/foraldrapenning"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setNumParents(1)}
-                          className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
-                            numParents === 1
-                              ? "bg-green-700 text-white border-green-700"
-                              : "bg-white text-gray-700 border-gray-300"
-                          }`}
-                        >
-                          1
-                        </button>
-                        <button
-                          onClick={() => setNumParents(2)}
-                          className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all ${
-                            numParents === 2
-                              ? "bg-green-700 text-white border-green-700"
-                              : "bg-white text-gray-700 border-gray-300"
-                          }`}
-                        >
-                          2
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {t.birthDateLabel}
-                        </label>
-                        <InfoTooltip
-                          title={t.birthDateTooltipTitle}
-                          content={t.birthDateTooltipContent}
-                          link="https://www.forsakringskassan.se/foralder/foraldrapenning"
-                        />
-                      </div>
-                      <input
-                        type="date"
-                        value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
-                      />
-                    </div>
-
-                    {numParents === 2 && calculatedDoubleDays > 0 && (
-                      <div
-                        className={`p-4 rounded-lg border-2 ${
-                          calculatedDoubleDays > 60
-                            ? "bg-red-50 border-red-500"
-                            : "bg-green-50 border-green-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className={`text-lg font-semibold ${
-                              calculatedDoubleDays > 60
-                                ? "text-red-700"
-                                : "text-green-700"
-                            }`}
-                          >
-                            {calculatedDoubleDays > 60 ? "⚠️" : "ℹ️"}{" "}
-                            {language === "sv" ? "Dubbeldagar" : "Double days"}
-                          </span>
-                          <InfoTooltip
-                            title={t.doubleDaysTooltipTitle}
-                            content={t.doubleDaysTooltipContent}
-                            link="https://www.forsakringskassan.se/privatperson/foralder/foraldrapenning/foraldralediga-tillsammans---dubbeldagar"
-                          />
-                        </div>
-                        <p
-                          className={`text-sm ${
-                            calculatedDoubleDays > 60
-                              ? "text-red-700"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {language === "sv"
-                            ? `Era perioder överlappar med ${calculatedDoubleDays} dagar. Detta använder ${calculatedDoubleDays * 2} dagar från era 480 dagar.`
-                            : `Your periods overlap by ${calculatedDoubleDays} days. This uses ${calculatedDoubleDays * 2} days from your 480 days.`}
-                        </p>
-                        {calculatedDoubleDays > 60 && (
-                          <p className="text-sm text-red-700 mt-2 font-semibold">
-                            {language === "sv"
-                              ? "⚠️ Max 60 dubbeldagar tillåts! Justera era start/slutdatum för att minska överlappningen."
-                              : "⚠️ Max 60 double days allowed! Adjust your start/end dates to reduce overlap."}
-                          </p>
-                        )}
-                        {calculatedDoubleDays > 0 &&
-                          calculatedDoubleDays <= 60 && (
-                            <p className="text-xs text-gray-600 mt-2">
-                              {language === "sv"
-                                ? `${60 - calculatedDoubleDays} dubbeldagar kvar av max 60`
-                                : `${60 - calculatedDoubleDays} double days remaining of max 60`}
-                            </p>
-                          )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Municipality and Tax Settings */}
-                <div className="mb-6">
-                  <MunicipalitySelector
+              <div className="space-y-6">
+                {/* Section 1: Settings */}
+                <CollapsibleSection
+                  title={
+                    language === "sv"
+                      ? "1. Grundinställningar"
+                      : "1. Basic Settings"
+                  }
+                  subtitle={
+                    language === "sv"
+                      ? "Välj kommun, datum och antal föräldrar"
+                      : "Select municipality, date and number of parents"
+                  }
+                  isOpen={openSections.settings}
+                  isComplete={selectedMunicipality !== "" && birthDate !== ""}
+                  onToggle={() => toggleSection("settings")}
+                  autoScroll={false}
+                  showNextButton={true}
+                  onNext={() => goToNextSection("settings", "parents")}
+                  nextButtonText={
+                    language === "sv"
+                      ? "Nästa: Föräldrakort →"
+                      : "Next: Parent Cards →"
+                  }
+                >
+                  <SettingsSection
+                    numParents={numParents}
+                    setNumParents={setNumParents}
+                    birthDate={birthDate}
+                    setBirthDate={setBirthDate}
                     selectedMunicipality={selectedMunicipality}
                     onMunicipalityChange={handleMunicipalityChange}
                     isChurchMember={isChurchMember}
                     onChurchMemberChange={setIsChurchMember}
+                    calculatedDoubleDays={calculatedDoubleDays}
                   />
-                </div>
+                </CollapsibleSection>
 
-                {/* Parent Cards */}
-                <div className="space-y-6 mb-6">
-                  {parents.slice(0, numParents).map((parent, idx) => (
-                    <ParentCard
-                      key={parent.id}
-                      parent={parent}
-                      index={idx}
-                      benefits={parentResults[idx]}
-                      onUpdate={(field, value) => {
-                        // Only parent-level fields (name, salary, type, employerTopUp)
-                        updateParent(parent.id, field, value);
-                      }}
-                      onUpdatePeriod={(periodId, field, value) => {
-                        updatePeriod(parent.id, periodId, field, value);
-                      }}
-                      onAddPeriod={() => addPeriod(parent.id)}
-                      onDeletePeriod={(periodId) =>
-                        deletePeriod(parent.id, periodId)
-                      }
+                {/* Section 2: Parents */}
+                <CollapsibleSection
+                  title={
+                    language === "sv" ? "2. Föräldrakort" : "2. Parent Cards"
+                  }
+                  subtitle={
+                    language === "sv"
+                      ? "Fyll i löner, perioder och planera er ledighet"
+                      : "Fill in salaries, periods and plan your leave"
+                  }
+                  isOpen={openSections.parents}
+                  isComplete={parents
+                    .slice(0, numParents)
+                    .every(
+                      (p) =>
+                        p.monthlySalary > 0 &&
+                        p.periods.length > 0 &&
+                        p.periods.every((period) => period.daysToTake > 0),
+                    )}
+                  onToggle={() => toggleSection("parents")}
+                  autoScroll={true}
+                  showNextButton={true}
+                  onNext={() => goToNextSection("parents", "summary")}
+                  nextButtonText={
+                    language === "sv"
+                      ? "Nästa: Se sammanfattning →"
+                      : "Next: View summary →"
+                  }
+                >
+                  <ParentsSection
+                    parents={parents}
+                    numParents={numParents}
+                    parentResults={parentResults}
+                    calculatedDoubleDays={calculatedDoubleDays}
+                    onUpdateParent={updateParent}
+                    onUpdatePeriod={updatePeriod}
+                    onAddPeriod={addPeriod}
+                    onDeletePeriod={deletePeriod}
+                  />
+                </CollapsibleSection>
+
+                {/* Section 3: Summary */}
+                <CollapsibleSection
+                  title={language === "sv" ? "3. Sammanfattning" : "3. Summary"}
+                  subtitle={
+                    language === "sv"
+                      ? "Total ekonomisk översikt"
+                      : "Total financial overview"
+                  }
+                  isOpen={openSections.summary}
+                  isComplete={true}
+                  onToggle={() => toggleSection("summary")}
+                  autoScroll={true}
+                  showNextButton={true}
+                  onNext={() => goToNextSection("summary", "table")}
+                  nextButtonText={
+                    language === "sv"
+                      ? "Nästa: Se månadstabell →"
+                      : "Next: View monthly table →"
+                  }
+                >
+                  <div className="space-y-4">
+                    <ValidationWarnings warnings={validationWarnings} />
+                    <Summary
+                      parents={parents}
+                      numParents={numParents}
+                      parentResults={parentResults}
+                      totalBenefitAfterTax={parentResults
+                        .slice(0, numParents)
+                        .reduce((sum, p) => sum + p.totalBenefitAfterTax, 0)}
+                      totalBenefitBeforeTax={parentResults
+                        .slice(0, numParents)
+                        .reduce((sum, p) => sum + p.totalBenefitBeforeTax, 0)}
                     />
-                  ))}
-
-                  {/* Days Summary */}
-                  <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-                    <h4 className="text-lg font-semibold text-green-900 mb-4">
-                      {language === "sv" ? "Dagfördelning" : "Days Breakdown"}
-                    </h4>
-
-                    {/* Days breakdown */}
-                    <div className="space-y-3 mb-4">
-                      {parents.slice(0, numParents).map((parent, idx) => (
-                        <div
-                          key={parent.id}
-                          className="flex justify-between items-center"
-                        >
-                          <span className="text-sm text-gray-700">
-                            {parent.name}:
-                          </span>
-                          <span className="text-lg font-semibold text-green-900">
-                            {getTotalDaysFromPeriods(parent.periods)}{" "}
-                            {language === "sv" ? "dagar" : "days"}
-                          </span>
-                        </div>
-                      ))}
-
-                      {numParents === 2 && (
-                        <div className="flex justify-between items-center pt-2 border-t border-green-200">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-700">
-                              {t.doubleDaysLabel}:
-                            </span>
-                            <InfoTooltip
-                              title={t.doubleDaysTooltipTitle}
-                              content={
-                                language === "sv"
-                                  ? "När båda föräldrar tar ut samtidigt används extra dagar från totalen. Exempel: 30 dubbeldagar = båda tar 30 dagar samtidigt = 60 dagar från 480-poolen."
-                                  : "When both parents take leave simultaneously, extra days are used from the total. Example: 30 double days = both take 30 days together = 60 days from the 480-day pool."
-                              }
-                              link="https://www.forsakringskassan.se/foralder/foraldrapenning/bada-foraldrar-lediga-samtidigt"
-                            />
-                          </div>
-                          <span
-                            className={`text-lg font-semibold ${
-                              calculatedDoubleDays > 0
-                                ? "text-orange-600"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            {calculatedDoubleDays > 0 ? "+" : ""}
-                            {calculatedDoubleDays}{" "}
-                            {language === "sv" ? "dagar" : "days"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Total summary */}
-                    <div className="pt-4 border-t-2 border-green-300">
-                      {/* Visual progress bar */}
-                      <div className="mb-4">
-                        <div className="h-12 md:h-8 bg-gray-200 rounded-lg overflow-hidden flex">
-                          {numParents >= 1 && (
-                            <div
-                              className="bg-green-500 flex items-center justify-center text-white text-xs font-semibold"
-                              style={{
-                                width: `${(getTotalDaysFromPeriods(parents[0].periods) / TOTAL_PARENTAL_DAYS) * 100}%`,
-                              }}
-                              title={`${parents[0].name}: ${getTotalDaysFromPeriods(parents[0].periods)} ${language === "sv" ? "dagar" : "days"}`}
-                            >
-                              {getTotalDaysFromPeriods(parents[0].periods) >
-                                30 && parents[0].name}
-                            </div>
-                          )}
-                          {numParents === 2 && (
-                            <div
-                              className="bg-green-600 flex items-center justify-center text-white text-xs font-semibold"
-                              style={{
-                                width: `${(getTotalDaysFromPeriods(parents[1].periods) / TOTAL_PARENTAL_DAYS) * 100}%`,
-                              }}
-                              title={`${parents[1].name}: ${getTotalDaysFromPeriods(parents[1].periods)} ${language === "sv" ? "dagar" : "days"}`}
-                            >
-                              {getTotalDaysFromPeriods(parents[1].periods) >
-                                30 && parents[1].name}
-                            </div>
-                          )}
-                          {calculatedDoubleDays > 0 && (
-                            <div
-                              className="bg-orange-500 flex items-center justify-center text-white text-xs font-semibold"
-                              style={{
-                                width: `${(calculatedDoubleDays / TOTAL_PARENTAL_DAYS) * 100}%`,
-                              }}
-                              title={`${language === "sv" ? "Dubbeldagar" : "Double days"}: ${calculatedDoubleDays} ${language === "sv" ? "dagar" : "days"}`}
-                            >
-                              {calculatedDoubleDays > 15 &&
-                                (language === "sv" ? "Dubbel" : "Double")}
-                            </div>
-                          )}
-                          {daysRemaining > 0 && (
-                            <div
-                              className="bg-green-200 flex items-center justify-center text-green-800 text-xs font-semibold"
-                              style={{
-                                width: `${(daysRemaining / TOTAL_PARENTAL_DAYS) * 100}%`,
-                              }}
-                              title={`${language === "sv" ? "Återstår" : "Remaining"}: ${daysRemaining} ${language === "sv" ? "dagar" : "days"}`}
-                            >
-                              {daysRemaining > 30 &&
-                                (language === "sv" ? "Återstår" : "Left")}
-                            </div>
-                          )}
-                        </div>
-                        {/* Legend */}
-                        <div className="flex flex-wrap gap-3 mt-2 text-xs">
-                          <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-green-500 rounded"></div>
-                            <span>
-                              {parents[0]?.name ||
-                                (language === "sv" ? "Förälder 1" : "Parent 1")}
-                            </span>
-                          </div>
-                          {numParents === 2 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-green-600 rounded"></div>
-                              <span>
-                                {parents[1]?.name ||
-                                  (language === "sv"
-                                    ? "Förälder 2"
-                                    : "Parent 2")}
-                              </span>
-                            </div>
-                          )}
-                          {calculatedDoubleDays > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                              <span>
-                                {language === "sv"
-                                  ? "Dubbeldagar"
-                                  : "Double days"}
-                              </span>
-                            </div>
-                          )}
-                          {daysRemaining > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 bg-green-200 border border-green-400 rounded"></div>
-                              <span>
-                                {language === "sv" ? "Återstår" : "Remaining"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            {t.totalUsedDays}
-                          </p>
-                          <p className="text-3xl font-bold text-green-900">
-                            {totalDaysTaken + calculatedDoubleDays} /{" "}
-                            {TOTAL_PARENTAL_DAYS}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">
-                            {t.remainingDays}
-                          </p>
-                          <p
-                            className={`text-3xl font-bold ${
-                              daysRemaining < 0
-                                ? "text-red-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            {daysRemaining}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                </div>
+                </CollapsibleSection>
+
+                {/* Section 4: Monthly Table */}
+                <CollapsibleSection
+                  title={
+                    language === "sv" ? "4. Månadsinkomst" : "4. Monthly Income"
+                  }
+                  subtitle={
+                    language === "sv"
+                      ? "Detaljerad inkomst månad för månad"
+                      : "Detailed income month by month"
+                  }
+                  isOpen={openSections.table}
+                  isComplete={true}
+                  onToggle={() => toggleSection("table")}
+                  autoScroll={true}
+                >
+                  <MonthlyIncomeTable
+                    monthlyData={monthlyData}
+                    numParents={numParents}
+                    doubleDays={calculatedDoubleDays}
+                    parent1Name={parents[0]?.name}
+                    parent2Name={parents[1]?.name}
+                  />
+                </CollapsibleSection>
 
                 {/* Export Buttons */}
                 <ExportButtons
                   parents={parents}
+                  numParents={numParents}
+                  monthlyData={monthlyData}
                   parentResults={parentResults}
                   birthDate={birthDate}
                   doubleDays={calculatedDoubleDays}
-                  numParents={numParents}
-                  monthlyData={getMonthlyData}
                 />
-
-                {/* Monthly Income Table */}
-                <div className="mt-6">
-                  <MonthlyIncomeTable
-                    monthlyData={getMonthlyData}
-                    numParents={numParents}
-                    doubleDays={calculatedDoubleDays}
-                    parent1Name={parents[0]?.name}
-                    parent2Name={
-                      numParents === 2 ? parents[1]?.name : undefined
-                    }
-                  />
-                </div>
-
-                {/* Summary */}
-                <Summary
-                  parents={parents}
-                  parentResults={parentResults}
-                  totalBenefitAfterTax={totalBenefitAfterTax}
-                  totalBenefitBeforeTax={totalBenefitBeforeTax}
-                  numParents={numParents}
-                />
-
-                {/* Footer */}
-                <div className="text-center text-sm text-gray-600 mt-8">
-                  <p>{t.disclaimerText}</p>
-                  <p className="mt-2">{t.privacyFooterText}</p>
-                </div>
-              </>
+              </div>
             )}
           </div>
 
-          {/* Sidebar - Desktop only */}
-          <div className="lg:col-span-4">
+          {/* Sidebar - Hidden on mobile/tablet, visible on desktop */}
+          <div className="hidden lg:block lg:col-span-4">
             <InfoSidebar
               selectedCard={selectedInfoCard}
               onSelectCard={setSelectedInfoCard}
             />
           </div>
         </div>
-
-        {/* Feedback Footer */}
-        <FeedbackFooter />
       </div>
+
+      {/* Footer */}
+      <FeedbackFooter />
     </div>
   );
 };

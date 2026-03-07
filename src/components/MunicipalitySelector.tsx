@@ -21,7 +21,7 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
   isChurchMember,
   onChurchMemberChange,
 }) => {
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
   const [showInfo, setShowInfo] = useState(false);
 
   const handleMunicipalityChange = (municipality: string) => {
@@ -199,20 +199,50 @@ const MunicipalitySelector: React.FC<MunicipalitySelectorProps> = ({
         </div>
 
         {/* Current Tax Display */}
-        <div className="p-4 bg-white rounded-lg border border-green-200">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">
-              {language === "sv" ? "Din skattesats:" : "Your tax rate:"}
-            </span>
-            <span className="text-2xl font-bold text-green-600">
-              {(getCurrentTax() + (isChurchMember ? 1 : 0)).toFixed(2)}%
-            </span>
+        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="mb-3">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-medium text-gray-700">
+                {language === "sv" ? "Vald kommun:" : "Selected municipality:"}
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {selectedMunicipality ||
+                  (language === "sv" ? "Standard" : "Standard")}
+              </span>
+            </div>
+            {selectedMunicipality && (
+              <div className="flex justify-between items-center text-xs text-gray-600">
+                <span>
+                  {language === "sv" ? "Kommunalskatt:" : "Municipal tax:"}
+                </span>
+                <span>{getCurrentTax().toFixed(2)}%</span>
+              </div>
+            )}
+            {isChurchMember && (
+              <div className="flex justify-between items-center text-xs text-gray-600">
+                <span>
+                  {language === "sv" ? "Kyrkoavgift:" : "Church fee:"}
+                </span>
+                <span>~1.00%</span>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {language === "sv"
-              ? "Detta påverkar din dagersättning efter skatt"
-              : "This affects your daily benefit after tax"}
-          </p>
+
+          <div className="pt-3 border-t border-green-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-gray-700">
+                {language === "sv" ? "Total skattesats:" : "Total tax rate:"}
+              </span>
+              <span className="text-2xl font-bold text-green-700">
+                {(getCurrentTax() + (isChurchMember ? 1 : 0)).toFixed(2)}%
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              {language === "sv"
+                ? "Används i alla beräkningar för ersättning efter skatt"
+                : "Used in all calculations for benefits after tax"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

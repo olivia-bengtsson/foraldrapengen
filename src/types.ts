@@ -5,6 +5,8 @@ export interface ParentalPeriod {
   endDate: string;
   daysToTake: number;
   daysPerWeek: number;
+  level?: "high" | "low"; // Sjukpenningnivå eller lägstanivå (default: high)
+  isDoubleDay?: boolean; // Om detta är en dubbeldag (båda föräldrar samtidigt)
 }
 
 export interface Parent {
@@ -13,6 +15,7 @@ export interface Parent {
   type: "employed" | "self_employed" | "unemployed";
   monthlySalary: number;
   employerTopUp: number;
+  employerTopUpDays: number; // Antal dagar arbetsgivartillägg betalas (vanligt 180-360)
   periods: ParentalPeriod[]; // Array of periods
 }
 
@@ -45,8 +48,19 @@ export interface MonthlyData {
   month: string;
   parent1Total: number;
   parent1Days: number;
-  parent2Total: number;
-  parent2Days: number;
+  parent1HighDays?: number; // Antal sjukpenningnivå-dagar
+  parent1LowDays?: number; // Antal lägstanivå-dagar
+  parent2Total?: number; // Optional for single parent
+  parent2Days?: number; // Optional for single parent
+  parent2HighDays?: number;
+  parent2LowDays?: number;
+}
+
+export interface MonthlyIncomeResult {
+  total: number;
+  days: number;
+  highDays: number;
+  lowDays: number;
 }
 
 export type TabType = "calculator" | "info" | "examples";
