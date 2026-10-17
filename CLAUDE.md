@@ -38,7 +38,7 @@ Formel: `dagersättning = round(SGI × 0,97 × 0,80 / 365)`, inom 250–1 259 kr
 Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planeraren beskrivs i docs/PLANERARE.md, och den klickbara skissen finns i docs/planeringsskiss.html.
 
 **Fas 1 – grund**
-1. Samla alla årsberoende konstanter i `src/rules/rules2026.ts` med år och källa (A13).
+1. ✅ Samla alla årsberoende konstanter i `src/rules/rules2026.ts` med år och källa (A13). Koden importerar `RULES` från `src/rules`. Kvar till Fas 2/4: standardskatten 0,3 (A8) och föräldralön 360 dagar (A9) i calculations.ts, App.tsx, constants, periodHelpers och municipalities.ts.
 2. Hantera datum som rena datum utan tidszon och samla datumhjälparna i `periodHelpers.ts` (A15).
 3. Ny periodmodell enligt docs/PLANERARE.md: `{ id, start, weeks, daysPerWeek, level }`, där slutdatum och antal dagar alltid räknas fram (A3). Dubbeldagar räknas fram ur överlapp, inte från en kryssruta.
 

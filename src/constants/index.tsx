@@ -5,21 +5,7 @@ import { generatePeriodId } from "../utils/periodHelpers";
 // Försäkringskassan länkar
 export { FK_LINKS } from "./FkLinks";
 
-// Grundläggande föräldrapenning-regler
-export const TOTAL_PARENTAL_DAYS = 480;
-export const RESERVED_DAYS_PER_PARENT = 90;
-export const HIGH_LEVEL_THRESHOLD = 390;
-export const LOW_LEVEL_DAILY_AMOUNT = 180;
-export const MIN_DAILY_BENEFIT = 250;
-export const MAX_DAILY_BENEFIT = 1259; // Uppdaterat från 1250 till korrekt 1259 kr
-
-// SGI-gränser för 2025
-export const MAX_SGI_2025 = 588000; // 10 prisbasbelopp
-export const MIN_SGI_2025 = 14100; // 24% av prisbasbelopp
-export const PRISBASBELOPP_2025 = 58800;
-
-// Skattesatser
-export const STANDARD_TAX_RATE = 0.3; // Standard för föräldrapenning som sidoinkomst
+// Regler och belopp finns i src/rules/.
 
 // Helper function to generate dates dynamically (with error handling)
 const getTodayDate = () => {

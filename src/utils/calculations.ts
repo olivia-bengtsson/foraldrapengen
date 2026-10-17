@@ -2,28 +2,14 @@
 
 import { Parent, ParentBenefits, MonthlyIncomeResult } from "../types";
 import { getTotalDaysFromPeriods } from "./periodHelpers";
+import { RULES } from "../rules";
 
-// Konstanter för 2025/2026
-const MAX_SGI = 592000; // 10 prisbasbelopp för 2026
-const MIN_SGI = 14200; // 24% av prisbasbelopp för 2026
-const DEFAULT_TAX_RATE = 0.3; // Standardskatt för föräldrapenning som sidoinkomst
-const LOW_LEVEL_DAILY_BENEFIT = 180; // Lågnivådagar
-const SGI_CEILING_MONTHLY = 49333; // SGI-tak per månad 2026
+const { sgi: SGI, benefit: BENEFIT, days: DAYS, employerTopUp: TOP_UP } = RULES;
 
-// Föräldrapenningsregler
-export const PARENTAL_LEAVE_RULES = {
-  TOTAL_DAYS: 480,
-  DAYS_PER_PARENT: 240,
-  RESERVED_DAYS_PER_PARENT: 90,
-  TRANSFERABLE_DAYS_PER_PARENT: 150,
-  HIGH_LEVEL_DAYS_TOTAL: 390,
-  LOW_LEVEL_DAYS_TOTAL: 90,
-  HIGH_LEVEL_DAYS_PER_PARENT: 195,
-  LOW_LEVEL_DAYS_PER_PARENT: 45,
-  MIN_HIGH_LEVEL_BEFORE_LOW: 180, // Första 180 dagarna MÅSTE vara högNivå
-  MAX_DOUBLE_DAYS: 60,
-  DOUBLE_DAYS_MAX_AGE_MONTHS: 15,
-};
+// A8: ska bli RULES.tax.averageMunicipalRate (32,38 %). Behålls tills skattemodulen görs.
+const DEFAULT_TAX_RATE = 0.3;
+// A9: ska bli TOP_UP.typicalDays (180). Behålls tills föräldralönen rättas.
+const DEFAULT_TOP_UP_DAYS = 360;
 
 /**
  * Beräknar SGI (Sjukpenninggrundande inkomst)
@@ -31,28 +17,29 @@ export const PARENTAL_LEAVE_RULES = {
  */
 export const calculateSGI = (monthlySalary: number): number => {
   const yearlyIncome = monthlySalary * 12;
-  const sgi = yearlyIncome * 0.97;
+  // A7: sgiFactor hör hemma i dagersättningsformeln, inte i SGI.
+  const sgi = yearlyIncome * BENEFIT.sgiFactor;
 
   // Applicera tak och golv
-  if (sgi < MIN_SGI) {
+  if (sgi < SGI.min) {
     return 0; // Under minsta SGI = grundnivå
   }
 
-  return Math.min(sgi, MAX_SGI); // Takad vid max SGI
+  return Math.min(sgi, SGI.max); // Takad vid max SGI
 };
 
 /**
  * Beräknar dagersättning från FK
- * Max: 1259 kr/dag (vid max SGI)
- * Min: 250 kr/dag (grundnivå)
+ * Max: RULES.benefit.maxDaily (vid max SGI)
+ * Min: RULES.benefit.basicDaily (grundnivå)
  */
 export const calculateDailyBenefit = (sgi: number): number => {
   if (sgi === 0) {
-    return 250; // Grundnivå om ingen SGI
+    return BENEFIT.basicDaily; // Grundnivå om ingen SGI
   }
 
-  const daily = (sgi * 0.8) / 365;
-  return Math.min(Math.max(daily, 250), 1259);
+  const daily = (sgi * BENEFIT.rate) / 365;
+  return Math.min(Math.max(daily, BENEFIT.basicDaily), BENEFIT.maxDaily);
 };
 
 /**
@@ -96,7 +83,7 @@ export const calculateParentBenefits = (
   // Get total days from all periods
   const totalDays = getTotalDaysFromPeriods(parent.periods);
 
-  const reservedDays = 90;
+  const reservedDays = DAYS.reservedPerParent;
   const transferableDays = Math.max(0, totalDays - reservedDays);
 
   // Räkna highLevel och lowLevel dagar baserat på period.level
@@ -116,13 +103,13 @@ export const calculateParentBenefits = (
 
   // Beräkna FK-ersättning före skatt
   const fkBenefitBeforeTax =
-    highLevelDays * dailyBenefit + lowLevelDays * LOW_LEVEL_DAILY_BENEFIT;
+    highLevelDays * dailyBenefit + lowLevelDays * BENEFIT.lowLevelDaily;
 
   // Beräkna skatt med vald skattesats
   const tax = calculateTax(dailyBenefit, taxRate);
 
   // Beräkna lågnivå efter skatt med samma skattesats
-  const lowLevelAfterTax = LOW_LEVEL_DAILY_BENEFIT * (1 - taxRate);
+  const lowLevelAfterTax = BENEFIT.lowLevelDaily * (1 - taxRate);
 
   // FK-ersättning efter skatt
   const fkBenefitAfterTax =
@@ -135,14 +122,12 @@ export const calculateParentBenefits = (
     const monthlySalary = parent.monthlySalary;
     const yearlySalary = monthlySalary * 12;
 
-    // SGI-tak för 2026: 592 000 kr/år = 49 333 kr/mån
-    const sgiCeilingMonthly = 49333;
-    const sgiCeilingYearly = sgiCeilingMonthly * 12;
+    const sgiCeilingYearly = SGI.max;
 
     // Begränsa PAG till max antal dagar från arbetsgivare
     const pagEligibleDays = Math.min(
       highLevelDays,
-      parent.employerTopUpDays || 360
+      parent.employerTopUpDays || DEFAULT_TOP_UP_DAYS
     );
 
     if (yearlySalary <= sgiCeilingYearly) {
@@ -152,8 +137,10 @@ export const calculateParentBenefits = (
       employerTopUpBeforeTax = dailyPAG * pagEligibleDays;
     } else {
       // Lön över taket: 10% under tak, 90% över tak (vanligt i kollektivavtal)
-      const underCeilingYearly = sgiCeilingYearly * 0.1; // 10% av lön under tak
-      const overCeilingYearly = (yearlySalary - sgiCeilingYearly) * 0.9; // 90% av lön över tak
+      // A9: användarens procentsats ignoreras här.
+      const underCeilingYearly = sgiCeilingYearly * TOP_UP.underCeilingRate;
+      const overCeilingYearly =
+        (yearlySalary - sgiCeilingYearly) * TOP_UP.overCeilingRate;
       const totalYearlyPAG = underCeilingYearly + overCeilingYearly;
       const dailyPAG = totalYearlyPAG / 365;
       employerTopUpBeforeTax = dailyPAG * pagEligibleDays;
@@ -253,7 +240,7 @@ export const getMonthlyIncomeForParent = (
   benefits: ParentBenefits,
   year: number,
   month: number,
-  taxRate: number = 0.3
+  taxRate: number = DEFAULT_TAX_RATE
 ): MonthlyIncomeResult => {
   const monthStart = new Date(year, month, 1);
   const monthEnd = new Date(year, month + 1, 0);
@@ -288,7 +275,7 @@ export const getMonthlyIncomeForParent = (
 
       if (level === "low") {
         // Lägstanivå: 180 kr/dag efter skatt
-        dailyBenefitAfterTax = LOW_LEVEL_DAILY_BENEFIT * (1 - taxRate);
+        dailyBenefitAfterTax = BENEFIT.lowLevelDaily * (1 - taxRate);
         lowLevelDaysThisMonth += effectiveDays;
       } else {
         // Sjukpenningnivå: använd benefits.dailyBenefitAfterTax
@@ -311,14 +298,14 @@ export const getMonthlyIncomeForParent = (
   ) {
     const monthlySalary = parent.monthlySalary;
     const yearlySalary = monthlySalary * 12;
-    const sgiCeilingYearly = SGI_CEILING_MONTHLY * 12;
+    const sgiCeilingYearly = SGI.max;
 
     // Räkna ut hur många PAG-dagar som redan förbrukats före denna månad
     const monthStart = new Date(year, month, 1);
     const accumulatedPAGDays = calculateAccumulatedPAGDays(parent, monthStart);
 
     // Hur många PAG-dagar kan vi använda denna månad?
-    const maxPAGDays = parent.employerTopUpDays || 360;
+    const maxPAGDays = parent.employerTopUpDays || DEFAULT_TOP_UP_DAYS;
     const remainingPAGDays = Math.max(0, maxPAGDays - accumulatedPAGDays);
     const pagDaysThisMonth = Math.min(highLevelDaysThisMonth, remainingPAGDays);
 
@@ -329,8 +316,9 @@ export const getMonthlyIncomeForParent = (
         const yearlyPAG = yearlySalary * (parent.employerTopUp / 100);
         dailyPAG = yearlyPAG / 365;
       } else {
-        const underCeilingYearly = sgiCeilingYearly * 0.1;
-        const overCeilingYearly = (yearlySalary - sgiCeilingYearly) * 0.9;
+        const underCeilingYearly = sgiCeilingYearly * TOP_UP.underCeilingRate;
+        const overCeilingYearly =
+          (yearlySalary - sgiCeilingYearly) * TOP_UP.overCeilingRate;
         const totalYearlyPAG = underCeilingYearly + overCeilingYearly;
         dailyPAG = totalYearlyPAG / 365;
       }
@@ -394,11 +382,11 @@ export const validateTotalDays = (
     numParents === 2 ? getTotalDaysFromPeriods(parents[1]?.periods || []) : 0;
 
   const totalDays = parent1Days + parent2Days;
-  const exceededDays = Math.max(0, totalDays - PARENTAL_LEAVE_RULES.TOTAL_DAYS);
+  const exceededDays = Math.max(0, totalDays - DAYS.total);
 
   if (exceededDays > 0) {
     warnings.push(
-      `Totalt antal dagar (${totalDays}) överstiger maxgränsen på ${PARENTAL_LEAVE_RULES.TOTAL_DAYS} dagar. ` +
+      `Totalt antal dagar (${totalDays}) överstiger maxgränsen på ${DAYS.total} dagar. ` +
         `Du planerar ${exceededDays} dagar för mycket.`
     );
   }
@@ -428,31 +416,31 @@ export const validateReservedDays = (
   const parent2Days = getTotalDaysFromPeriods(parents[1]?.periods || []);
 
   // Varje förälder måste ta minst 90 dagar
-  if (parent1Days < PARENTAL_LEAVE_RULES.RESERVED_DAYS_PER_PARENT) {
+  if (parent1Days < DAYS.reservedPerParent) {
     warnings.push(
-      `Förälder 1 har endast ${parent1Days} dagar. Varje förälder måste ta minst ${PARENTAL_LEAVE_RULES.RESERVED_DAYS_PER_PARENT} reserverade dagar.`
+      `Förälder 1 har endast ${parent1Days} dagar. Varje förälder måste ta minst ${DAYS.reservedPerParent} reserverade dagar.`
     );
   }
 
-  if (parent2Days < PARENTAL_LEAVE_RULES.RESERVED_DAYS_PER_PARENT) {
+  if (parent2Days < DAYS.reservedPerParent) {
     warnings.push(
-      `Förälder 2 har endast ${parent2Days} dagar. Varje förälder måste ta minst ${PARENTAL_LEAVE_RULES.RESERVED_DAYS_PER_PARENT} reserverade dagar.`
+      `Förälder 2 har endast ${parent2Days} dagar. Varje förälder måste ta minst ${DAYS.reservedPerParent} reserverade dagar.`
     );
   }
 
   // Kontrollera att inte mer än 150 dagar förs över
-  const parent1Transferred = PARENTAL_LEAVE_RULES.DAYS_PER_PARENT - parent1Days;
-  const parent2Transferred = PARENTAL_LEAVE_RULES.DAYS_PER_PARENT - parent2Days;
+  const parent1Transferred = DAYS.perParent - parent1Days;
+  const parent2Transferred = DAYS.perParent - parent2Days;
 
-  if (parent1Transferred > PARENTAL_LEAVE_RULES.TRANSFERABLE_DAYS_PER_PARENT) {
+  if (parent1Transferred > DAYS.transferablePerParent) {
     warnings.push(
-      `Förälder 1 försöker föra över ${parent1Transferred} dagar, men max ${PARENTAL_LEAVE_RULES.TRANSFERABLE_DAYS_PER_PARENT} dagar kan föras över.`
+      `Förälder 1 försöker föra över ${parent1Transferred} dagar, men max ${DAYS.transferablePerParent} dagar kan föras över.`
     );
   }
 
-  if (parent2Transferred > PARENTAL_LEAVE_RULES.TRANSFERABLE_DAYS_PER_PARENT) {
+  if (parent2Transferred > DAYS.transferablePerParent) {
     warnings.push(
-      `Förälder 2 försöker föra över ${parent2Transferred} dagar, men max ${PARENTAL_LEAVE_RULES.TRANSFERABLE_DAYS_PER_PARENT} dagar kan föras över.`
+      `Förälder 2 försöker föra över ${parent2Transferred} dagar, men max ${DAYS.transferablePerParent} dagar kan föras över.`
     );
   }
 
@@ -497,12 +485,12 @@ export const validateLowLevelDaysRule = (
   // Om det finns lågNivådagar men mindre än 180 högNivådagar totalt
   if (
     hasLowLevelDays &&
-    totalHighLevelDays < PARENTAL_LEAVE_RULES.MIN_HIGH_LEVEL_BEFORE_LOW
+    totalHighLevelDays < DAYS.highLevelBeforeLowLevel
   ) {
     const daysRemaining =
-      PARENTAL_LEAVE_RULES.MIN_HIGH_LEVEL_BEFORE_LOW - totalHighLevelDays;
+      DAYS.highLevelBeforeLowLevel - totalHighLevelDays;
     warnings.push(
-      `⚠️ De första 180 dagarna måste vara på sjukpenningnivå. ` +
+      `⚠️ De första ${DAYS.highLevelBeforeLowLevel} dagarna måste vara på sjukpenningnivå. ` +
         `Ni har tagit ${totalHighLevelDays} dagar på sjukpenningnivå. ` +
         `${daysRemaining} dagar kvar innan lägstanivådagar kan börja tas ut.`
     );
@@ -552,10 +540,10 @@ export const validateDoubleDays = (
             (periodStart.getFullYear() - birthDate.getFullYear()) * 12 +
             (periodStart.getMonth() - birthDate.getMonth());
 
-          if (monthsDiff > PARENTAL_LEAVE_RULES.DOUBLE_DAYS_MAX_AGE_MONTHS) {
+          if (monthsDiff > DAYS.doubleDaysMaxAgeMonths) {
             warnings.push(
               `⚠️ Period "${period.id}" är en dubbeldag men barnet är ${monthsDiff} månader gammalt. ` +
-                `Dubbeldagar kan endast tas ut innan barnet fyller ${PARENTAL_LEAVE_RULES.DOUBLE_DAYS_MAX_AGE_MONTHS} månader.`
+                `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
             );
           }
         }
@@ -569,12 +557,12 @@ export const validateDoubleDays = (
   const actualDoubleDays = totalDoubleDays / 2;
   const exceededDays = Math.max(
     0,
-    actualDoubleDays - PARENTAL_LEAVE_RULES.MAX_DOUBLE_DAYS
+    actualDoubleDays - DAYS.maxDoubleDays
   );
 
   if (exceededDays > 0) {
     warnings.push(
-      `⚠️ Du har planerat ${actualDoubleDays} dubbeldagar, men max ${PARENTAL_LEAVE_RULES.MAX_DOUBLE_DAYS} dubbeldagar tillåts. ` +
+      `⚠️ Du har planerat ${actualDoubleDays} dubbeldagar, men max ${DAYS.maxDoubleDays} dubbeldagar tillåts. ` +
         `Du har ${exceededDays} för många dubbeldagar.`
     );
   }

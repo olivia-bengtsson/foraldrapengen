@@ -1,5 +1,6 @@
 import { Parent, ParentBenefits } from "../types";
 import { getTotalDaysFromPeriods } from "./periodHelpers";
+import { RULES } from "../rules";
 
 /**
  * Genererar en textsummering som kan kopieras till urklipp
@@ -44,7 +45,7 @@ EKONOMI:
 • SGI (årsinkomst): ${result.sgi.toLocaleString("sv-SE")} kr/år
 • Dagersättning efter skatt: ${result.dailyBenefitAfterTax.toLocaleString("sv-SE")} kr/dag
 • Högnivådagar (80%): ${result.highLevelDays} dagar
-• Lågnivådagar (180 kr): ${result.lowLevelDays} dagar
+• Lågnivådagar (${RULES.benefit.lowLevelDaily} kr): ${result.lowLevelDays} dagar
 • Total ersättning efter skatt: ${result.totalBenefitAfterTax.toLocaleString("sv-SE")} kr
 ${parent.employerTopUp > 0 ? `• Arbetsgivartillägg: ${result.employerTopUpAmount.toLocaleString("sv-SE")} kr\n` : ""}
 `;
@@ -54,8 +55,8 @@ ${parent.employerTopUp > 0 ? `• Arbetsgivartillägg: ${result.employerTopUpAmo
 ═══════════════════════════════════════
 TOTALT FÖR FAMILJEN
 ───────────────────────────────────────
-• Använda dagar: ${parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0)} av 480
-• Återstående dagar: ${480 - parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0) - doubleDays}
+• Använda dagar: ${parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0)} av ${RULES.days.total}
+• Återstående dagar: ${RULES.days.total - parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0) - doubleDays}
 • Total ersättning efter skatt: ${parentResults.reduce((sum, r) => sum + r.totalBenefitAfterTax, 0).toLocaleString("sv-SE")} kr
 
 ═══════════════════════════════════════
@@ -161,7 +162,7 @@ export const generateExcelExport = (
     csv += `SGI (årsinkomst),${result.sgi.toFixed(0)}\n`;
     csv += `Dagersättning efter skatt,${result.dailyBenefitAfterTax.toFixed(0)}\n`;
     csv += `Högnivådagar (80%),${result.highLevelDays}\n`;
-    csv += `Lågnivådagar (180 kr),${result.lowLevelDays}\n`;
+    csv += `Lågnivådagar (${RULES.benefit.lowLevelDaily} kr),${result.lowLevelDays}\n`;
     csv += `Total ersättning efter skatt,${result.totalBenefitAfterTax.toFixed(0)}\n`;
     if (parent.employerTopUp > 0) {
       csv += `Arbetsgivartillägg,${result.employerTopUpAmount.toFixed(0)}\n`;
@@ -174,7 +175,7 @@ export const generateExcelExport = (
   const totalDays = parents
     .slice(0, numParents)
     .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
-  const remainingDays = 480 - totalDays - doubleDays;
+  const remainingDays = RULES.days.total - totalDays - doubleDays;
   const totalBenefit = parentResults.reduce(
     (sum, r) => sum + r.totalBenefitAfterTax,
     0
