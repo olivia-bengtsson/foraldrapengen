@@ -193,11 +193,12 @@ export const generateExcelExport = (
   csv += `,Totalt\n`;
 
   monthlyData.forEach((data) => {
+    const parent2Total = data.parent2Total ?? 0;
     csv += `${data.month},${data.parent1Total.toFixed(0)}`;
     if (numParents === 2) {
-      csv += `,${data.parent2Total.toFixed(0)}`;
+      csv += `,${parent2Total.toFixed(0)}`;
     }
-    csv += `,${(data.parent1Total + data.parent2Total).toFixed(0)}\n`;
+    csv += `,${(data.parent1Total + parent2Total).toFixed(0)}\n`;
   });
 
   csv += `\n`;

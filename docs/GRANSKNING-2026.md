@@ -92,6 +92,10 @@ Ca 80 kommuner, data från 2025, Sigtuna ligger dubbelt (även under Uppsala lä
 ### A14. Regler som inte valideras (önskvärt)
 96 dagar efter 4 år, gräns vid 12 år, helgregeln vid 6–7 dagar/vecka på lägstanivå och högst 45 dagar till annan försäkrad.
 
+### A15. Datum blandar UTC och lokal tid
+Datumsträngar som `"2026-03-15"` tolkas av `new Date(...)` som midnatt UTC, medan månadsgränserna i `getMonthlyIncomeForParent` skapas i lokal tid med `new Date(år, månad, 1)`. Datum skrivs sedan tillbaka med `toISOString().split("T")[0]`, som alltid ger UTC-datumet. I svensk tid (UTC+1/+2) kan det flytta datumet en dag bakåt. Till exempel blir förvalt födelsedatum och startdatum i App.tsx och `src/constants/index.tsx` gårdagens datum om sidan öppnas mellan kl. 00 och 02. `getDateAfterDays` kombinerar UTC-tolkning med `setDate` i lokal tid, så samma förskjutning kan uppstå när en period passerar en sommartidsövergång. Även `periodHelpers.ts` och exportens datumstämpel använder `toISOString()`.
+Åtgärd: hantera datum som rena kalenderdatum utan tidszon, t.ex. med en liten hjälpmodul som tolkar och formaterar `ÅÅÅÅ-MM-DD` i lokal tid (eller räknar i hela dagar), och använd den överallt.
+
 ---
 
 ## 3. Felaktig eller inaktuell text (B)

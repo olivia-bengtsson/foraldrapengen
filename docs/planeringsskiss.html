@@ -1,0 +1,590 @@
+<title>Föräldrapengen planeringsskiss</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: delad skärm på desktop – formulär till vänster, sticky visualisering och hjälp till höger. Staplat på mobil med visualiseringen först. */
+:root{
+  --bg:#f4f7f5; --surface:#ffffff; --sunken:#eef3f0; --ink:#16211b; --muted:#5a6a61; --line:#dce5df;
+  --brand:#15803d; --brand-ink:#ffffff;
+  --p1:#15803d; --p1-soft:#cdeadb; --p2:#4f46e5; --p2-soft:#dedcfb;
+  --warn:#a15c07; --warn-soft:#fcefd9; --bad:#b42318; --bad-soft:#fde4e1;
+  --font-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1411; --surface:#151d18; --sunken:#111814; --ink:#e4ece7; --muted:#97a69d; --line:#26332b;
+  --brand:#3fbf74; --brand-ink:#08130c;
+  --p1:#3fbf74; --p1-soft:#1c3a29; --p2:#8f89ff; --p2-soft:#262650;
+  --warn:#f0a733; --warn-soft:#382811; --bad:#f7806f; --bad-soft:#3d1c18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1411; --surface:#151d18; --sunken:#111814; --ink:#e4ece7; --muted:#97a69d; --line:#26332b;
+  --brand:#3fbf74; --brand-ink:#08130c;
+  --p1:#3fbf74; --p1-soft:#1c3a29; --p2:#8f89ff; --p2-soft:#262650;
+  --warn:#f0a733; --warn-soft:#382811; --bad:#f7806f; --bad-soft:#3d1c18; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 48px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+.top{max-width:1240px;margin:0 auto;padding-block:20px 16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+.top h1{font-size:26px}
+.top h1 span{color:var(--brand)}
+.note{font-size:13px;color:var(--muted);background:var(--sunken);border:1px solid var(--line);border-radius:999px;padding:3px 12px}
+
+.app{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:28px;align-items:start}
+.viz{position:sticky;top:12px;display:grid;gap:16px;max-height:calc(100vh - 24px);overflow:auto;padding-bottom:4px}
+@media (max-width:920px){.app{grid-template-columns:minmax(0,1fr)}.viz{position:static;max-height:none;order:-1}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2{font-size:17px;margin-bottom:12px}
+.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:var(--sunken);border:1px solid var(--line);border-radius:var(--r);padding:4px;margin-bottom:16px}
+.tab{flex:1;border:0;background:transparent;padding:9px 12px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+
+/* Form */
+.form{display:grid;gap:16px}
+.q{display:grid;gap:8px}
+.q > label,.q > .lbl{font-weight:600}
+.hint{font-size:13px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:480px){.row2{grid-template-columns:minmax(0,1fr)}}
+input[type=date],input[type=number],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;min-width:44px}
+.seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+.slider{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+input[type=range]{width:100%;accent-color:var(--brand)}
+.slider output{min-width:118px;text-align:right;font-size:14px}
+.who{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.dot.p0{background:var(--p1)}.dot.p1{background:var(--p2)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+.check input{margin-top:3px;accent-color:var(--brand)}
+.cta{border:0;background:var(--brand);color:var(--brand-ink);padding:11px 16px;border-radius:8px;font-weight:600;cursor:pointer;justify-self:start}
+
+/* Detail */
+.parent{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;background:var(--surface)}
+.parent-head{display:flex;align-items:center;gap:10px}
+.parent-head input{flex:1;min-width:0;font-family:var(--font-display);font-size:18px;font-weight:600;border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent}
+.parent-head input:hover,.parent-head input:focus{border-color:var(--line)}
+.period{border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--sunken)}
+.period.low{border-left-style:dashed}
+.period.hl{box-shadow:0 0 0 2px var(--pc)}
+.period-grid{display:grid;grid-template-columns:1.3fr .8fr .8fr 1.1fr;gap:8px}
+@media (max-width:560px){.period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.period-grid label{font-size:12px;color:var(--muted);display:grid;gap:3px}
+.period-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:13px}
+.period-foot strong{font-weight:600}
+.link{border:0;background:none;color:var(--muted);cursor:pointer;text-decoration:underline;padding:0;font-size:13px}
+.add{border:1px dashed var(--line);background:transparent;border-radius:8px;padding:10px;cursor:pointer;color:var(--ink);font-weight:500}
+.add:hover{border-color:var(--brand)}
+.inline-warn{font-size:13px;background:var(--warn-soft);color:var(--ink);border-radius:6px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inline-warn button{border:1px solid var(--warn);background:transparent;border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--ink)}
+
+/* Timeline */
+.tl{display:grid;grid-template-columns:96px minmax(0,1fr);row-gap:8px;column-gap:10px;align-items:center}
+.tl-label{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-label.sub{font-weight:500;color:var(--muted)}
+.track{position:relative;height:30px;background:var(--sunken);border-radius:6px}
+.track.slim{height:16px}
+.blk{position:absolute;top:0;bottom:0;border-radius:5px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:600;overflow:hidden;white-space:nowrap;cursor:pointer;color:var(--brand-ink)}
+.blk.p0{background:var(--p1)}.blk.p1{background:var(--p2)}
+.blk.part{opacity:.62}
+.blk.low.p0{background:repeating-linear-gradient(135deg,var(--p1) 0 6px,var(--p1-soft) 6px 10px);color:var(--ink)}
+.blk.low.p1{background:repeating-linear-gradient(135deg,var(--p2) 0 6px,var(--p2-soft) 6px 10px);color:var(--ink)}
+.blk.hl{outline:2px solid var(--ink);outline-offset:1px;z-index:2}
+.both{position:absolute;top:0;bottom:0;border-radius:4px;background:repeating-linear-gradient(90deg,var(--p1) 0 5px,var(--p2) 5px 10px)}
+.both.late{background:repeating-linear-gradient(90deg,var(--bad) 0 5px,var(--bad-soft) 5px 10px)}
+.gap{position:absolute;top:0;bottom:0;border-radius:4px;background:var(--bad-soft);border:1px dashed var(--bad)}
+.covered{position:absolute;top:0;bottom:0;border-radius:4px;background:var(--line)}
+.axis{position:relative;height:20px;font-size:11px;color:var(--muted)}
+.axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.marker{position:absolute;top:-4px;bottom:-4px;border-left:2px dotted var(--muted);pointer-events:none}
+.marker.m15{border-left-color:var(--warn)}
+.markers{position:absolute;inset:0;pointer-events:none}
+.tl-wrap{position:relative}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:18px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+
+/* Meters */
+.meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.meters{grid-template-columns:minmax(0,1fr)}}
+.meter{display:grid;gap:6px}
+.meter .v{font-family:var(--font-display);font-size:22px;font-weight:700}
+.meter .v small{font-family:var(--font-body);font-size:13px;color:var(--muted);font-weight:500}
+.bar{height:8px;background:var(--sunken);border-radius:99px;overflow:hidden;display:flex}
+.bar b{display:block;height:100%}
+.bar b.p0{background:var(--p1)}.bar b.p1{background:var(--p2)}.bar b.over{background:var(--bad)}
+.meter .s{font-size:12px;color:var(--muted)}
+.meter.bad .v{color:var(--bad)}
+.reserved{display:grid;gap:6px;margin-top:14px;font-size:13px}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:99px;padding:1px 8px}
+.pill.ok{background:var(--p1-soft);color:var(--ink)}
+.pill.warn{background:var(--warn-soft);color:var(--ink)}
+.pill.bad{background:var(--bad-soft);color:var(--ink)}
+
+/* Chart */
+.chart svg{width:100%;height:auto;display:block}
+.chart .gridl{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--font-body)}
+.chart .norm{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+.chart .r0{fill:var(--p1)}.chart .r1{fill:var(--p2)}
+.chart rect:hover{opacity:.8}
+.insight{font-size:14px;margin-top:10px}
+
+/* Help */
+.help{border-left:4px solid var(--brand)}
+.help p{margin:6px 0 0;max-width:62ch}
+.help a{color:var(--brand)}
+@media (prefers-reduced-motion:no-preference){.blk,.bar b,.both{transition:left .25s,width .25s}}
+</style>
+
+<header class="top">
+  <h1>Föräldra<span>pengen</span></h1>
+  <span class="note">Skiss av nytt planeringsflöde · exempeldata · förenklad skatt</span>
+</header>
+
+<main class="app">
+  <section aria-label="Fyll i">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-quick" aria-selected="true" aria-controls="quick">Snabbstart</button>
+      <button class="tab" role="tab" id="tab-detail" aria-selected="false" aria-controls="detail">Detaljerad plan</button>
+    </div>
+    <div id="quick" role="tabpanel" aria-labelledby="tab-quick"></div>
+    <div id="detail" role="tabpanel" aria-labelledby="tab-detail" hidden></div>
+  </section>
+
+  <aside class="viz" aria-label="Er plan">
+    <div class="panel">
+      <div class="eyebrow">Er plan</div>
+      <h2 id="tl-title">Tidslinje från barnets födelse</h2>
+      <div id="timeline"></div>
+    </div>
+    <div class="panel">
+      <h2>Dagar kvar att planera</h2>
+      <div id="meters"></div>
+    </div>
+    <div class="panel help" id="help" aria-live="polite"></div>
+    <div class="panel chart">
+      <h2>Hushållets inkomst per månad efter skatt</h2>
+      <div id="chart"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* ---------- Regler 2026 (docs/GRANSKNING-2026.md) ---------- */
+const R = { SGI_MAX: 592000, SGI_MIN: 14200, DAY_MAX: 1259, DAY_MIN: 250, LOW: 180,
+  HIGH_TOTAL: 390, LOW_TOTAL: 90, TOTAL: 480, RESERVED: 90, DOUBLE_MAX: 60, DOUBLE_MONTHS: 15,
+  TOPUP_PCT: 0.10, TOPUP_DAYS: 180, TAX: 0.3238 };
+
+/* ---------- Datum som rena datum (dagnummer i UTC) ---------- */
+const DAY = 864e5;
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); };
+const ymd = n => new Date(n*DAY).toISOString().slice(0,10);
+const MON = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
+const human = n => { const d = new Date(n*DAY); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const addMonths = (n, k) => { const d = new Date(n*DAY); return Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+k, d.getUTCDate())/DAY); };
+const kr = v => Math.round(v).toLocaleString("sv-SE") + " kr";
+const weeksFromMonths = m => Math.max(1, Math.round(m*52/12));
+const monthsFromWeeks = w => Math.round(w*12/52*2)/2;
+
+/* ---------- Tillstånd ---------- */
+let uid = 0;
+const state = {
+  tab: "quick",
+  quick: { n: 2, birth: "2026-03-01", first: 0, months: [9, 9], dpw: 5, together: 2, salary: [38000, 42000], topup: [true, true] },
+  names: ["Alex", "Sam"],
+  periods: [[], []],
+  hl: null,
+  help: "start",
+};
+
+function period(start, weeks, dpw, level){ return { id: ++uid, start, weeks, dpw, level }; }
+const endOf = p => parse(p.start) + p.weeks*7 - 1;
+const daysOf = p => p.weeks * p.dpw;
+
+/* ---------- Snabbstart → förslag ---------- */
+function generate(){
+  const q = state.quick, birth = parse(q.birth);
+  const P = [[], []];
+  let high = R.HIGH_TOTAL, low = R.LOW_TOTAL;
+  const A = q.first, B = 1 - q.first, two = q.n === 2;
+  const togetherDays = two ? q.together*5 : 0;
+  if (two && q.together > 0) { P[B].push(period(q.birth, q.together, 5, "high")); high -= togetherDays; }
+  const wB = two ? weeksFromMonths(q.months[B]) : 0;
+  const keepForB = two ? Math.min(R.RESERVED, wB*q.dpw) : 0;
+
+  function split(i, startN, weeks, dpw, cap){
+    const hw = Math.min(weeks, Math.max(0, Math.floor(cap/dpw)));
+    let s = startN;
+    if (hw > 0){ P[i].push(period(ymd(s), hw, dpw, "high")); high -= hw*dpw; s += hw*7; }
+    let rest = weeks - hw;
+    if (rest > 0){
+      const lw = Math.min(rest, Math.floor(low/dpw));
+      if (lw > 0){ P[i].push(period(ymd(s), lw, dpw, "low")); low -= lw*dpw; s += lw*7; rest -= lw; }
+      if (rest > 0){ P[i].push(period(ymd(s), rest, dpw, "high")); high -= rest*dpw; s += rest*7; }
+    }
+    return s;
+  }
+  const wA = weeksFromMonths(q.months[A]);
+  let next = birth;
+  if (q.months[A] > 0) next = split(A, birth, wA, q.dpw, high - keepForB);
+  if (two && q.months[B] > 0) split(B, next, wB, q.dpw, high);
+  state.periods = P;
+}
+
+/* ---------- Beräkningar ---------- */
+function dailyBenefit(salary){
+  const inc = salary*12;
+  if (inc < R.SGI_MIN) return R.DAY_MIN;
+  const v = Math.round(Math.min(inc, R.SGI_MAX)*0.97*0.8/365);
+  return Math.min(R.DAY_MAX, Math.max(R.DAY_MIN, v));
+}
+const activeParents = () => state.quick.n === 2 ? [0,1] : [0];
+const sorted = i => [...state.periods[i]].sort((a,b) => parse(a.start) - parse(b.start));
+
+function totals(){
+  const t = { high:[0,0], low:[0,0] };
+  activeParents().forEach(i => state.periods[i].forEach(p => t[p.level][i] += daysOf(p)));
+  return t;
+}
+function overlaps(){
+  if (state.quick.n !== 2) return [];
+  const out = [], lim = addMonths(parse(state.quick.birth), R.DOUBLE_MONTHS);
+  for (const a of state.periods[0]) for (const b of state.periods[1]){
+    const s = Math.max(parse(a.start), parse(b.start)), e = Math.min(endOf(a), endOf(b));
+    if (s <= e){
+      const cal = e - s + 1, days = Math.round(cal*Math.min(a.dpw, b.dpw)/7);
+      out.push({ s, e, days, late: e >= lim });
+    }
+  }
+  return out;
+}
+function gaps(){
+  const birth = parse(state.quick.birth);
+  const iv = activeParents().flatMap(i => state.periods[i].map(p => [parse(p.start), endOf(p)])).sort((a,b) => a[0]-b[0]);
+  const g = []; let cur = birth;
+  for (const [s,e] of iv){ if (s > cur) g.push([cur, s-1]); cur = Math.max(cur, e+1); }
+  return { gaps: g, end: cur - 1 };
+}
+
+/* Inkomst per kalenderdag: lön för arbetade dagar, föräldrapenning för uttagna dagar, föräldralön de första 180 kalenderdagarna. */
+function monthly(){
+  const q = state.quick, birth = parse(q.birth);
+  const span = Math.min(30, Math.max(18, Math.ceil((gaps().end - birth)/30.44) + 2));
+  const months = [];
+  for (let m = 0; m < span; m++){
+    const ms = addMonths(birth, m), d0 = new Date(ms*DAY);
+    const first = Math.round(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1)/DAY);
+    const last = Math.round(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth()+1, 0)/DAY);
+    months.push({ first, last, label: MON[d0.getUTCMonth()], year: d0.getUTCFullYear(), v:[0,0], normal:0 });
+  }
+  for (const i of activeParents()){
+    const sal = q.salary[i], daily = dailyBenefit(sal), ps = sorted(i);
+    const leaveStart = ps.length ? parse(ps[0].start) : Infinity;
+    for (const mo of months){
+      const dim = mo.last - mo.first + 1, perDay = sal/dim;
+      let gross = 0;
+      for (let d = mo.first; d <= mo.last; d++){
+        const p = ps.find(p => d >= parse(p.start) && d <= endOf(p));
+        if (!p){ gross += perDay; continue; }
+        const work = Math.max(0, 5 - p.dpw)/5;
+        gross += perDay*work;
+        gross += (p.level === "low" ? R.LOW : daily) * p.dpw/7;
+        if (q.topup[i] && p.level === "high" && d - leaveStart < R.TOPUP_DAYS)
+          gross += sal*12*R.TOPUP_PCT/365 * Math.min(p.dpw,5)/5;
+      }
+      mo.v[i] = gross*(1 - R.TAX);
+      mo.normal += sal*(1 - R.TAX);
+    }
+  }
+  return months;
+}
+
+/* ---------- Hjälptexter ---------- */
+const HELP = {
+  start: ["Så fungerar skissen", "Svara på frågorna till vänster så ritas en plan upp här. Klicka i ett fält för att få en förklaring. Under Detaljerad plan kan du finjustera varje period."],
+  birth: ["Barnets födelsedatum", "Planen räknas från födseln. Dubbeldagar måste tas innan barnet fyller 15 månader, och föräldrapenning kan sparas till barnet fyller 12 år. Efter 4-årsdagen får högst 96 dagar finnas kvar."],
+  months: ["Hur länge är du hemma?", "Ange tiden i månader, så räknar vi om den till veckor och dagar. Sex månader med 5 dagar i veckan blir 26 veckor och 130 dagar."],
+  dpw: ["Dagar i veckan", "5 dagar betyder att du är helt ledig och att helgerna inte tas ut. 6–7 dagar ger mer pengar per månad, men dagarna tar slut fortare. Färre än 5 betyder att du jobbar resten av veckan. Lediga dagar som helger kräver uttag dagen före eller efter."],
+  level: ["Ersättningsnivå", "Sjukpenningnivå ger ungefär 80 % av lönen, högst 1 259 kr per dag (2026). Lägstanivå ger 180 kr per dag och kan tas ut först när 180 dagar på sjukpenningnivå har använts för barnet."],
+  salary: ["Lön före skatt", "Föräldrapenningen räknas på lön upp till 49 333 kr i månaden (2026). Tjänar du mer får du ändå högst 1 259 kr per dag."],
+  topup: ["Föräldralön från arbetsgivaren", "Har arbetsgivaren kollektivavtal får du ofta föräldralön: ungefär 10 % av lönen, och ungefär 90 % av den del av lönen som ligger över 49 333 kr, oftast i upp till 6 månader. Fråga arbetsgivaren eller facket vad som gäller för dig."],
+  together: ["Hemma tillsammans", "Dagar då ni båda är lediga kallas dubbeldagar. Ni kan ta högst 60 innan barnet fyller 15 månader. Varje dubbeldag kostar en dag från var och en av er, och de 90 reserverade dagarna kan inte användas till dem."],
+  first: ["Vem börjar?", "Den som börjar tar ut sin period från födseln. Den andra föräldern tar över direkt efter. Du kan flytta perioderna fritt under Detaljerad plan."],
+  reserved: ["Reserverade dagar", "90 dagar per förälder är reserverade och kan inte föras över. Dagar som inte tas ut går förlorade."],
+};
+function renderHelp(){
+  const [h, p] = HELP[state.help] || HELP.start;
+  document.getElementById("help").innerHTML =
+    `<div class="eyebrow">Hjälp</div><h2>${h}</h2><p>${p}</p><p class="hint">Källa: Försäkringskassan, belopp för 2026. <a href="https://www.forsakringskassan.se/privatperson/familj-och-barn/foraldrapenning" target="_blank" rel="noopener">Läs mer hos Försäkringskassan</a></p>`;
+}
+document.addEventListener("focusin", e => {
+  const k = e.target.closest("[data-help]")?.dataset.help;
+  if (k && k !== state.help){ state.help = k; renderHelp(); }
+});
+
+/* ---------- Snabbstart ---------- */
+const nm = i => state.names[i];
+function seg(id, opts, val, help){
+  return `<div class="seg" role="group" id="${id}" data-help="${help}">${opts.map(([v,l]) =>
+    `<button type="button" data-v="${v}" aria-pressed="${String(v)===String(val)}">${l}</button>`).join("")}</div>`;
+}
+function monthsOut(i){
+  const m = state.quick.months[i], w = weeksFromMonths(m);
+  return m === 0 ? "inte hemma" : `${m} mån · ${w*state.quick.dpw} dagar`;
+}
+function renderQuick(){
+  const q = state.quick, two = q.n === 2;
+  document.getElementById("quick").innerHTML = `
+  <div class="panel form">
+    <div class="q"><span class="lbl">Hur många föräldrar delar på dagarna?</span>
+      ${seg("q-n", [[1,"1 förälder"],[2,"2 föräldrar"]], q.n, "start")}</div>
+    <div class="q" data-help="birth"><label for="q-birth">När är barnet fött eller beräknat?</label>
+      <input type="date" id="q-birth" value="${q.birth}"></div>
+    ${two ? `<div class="q"><span class="lbl">Vem är hemma först?</span>
+      ${seg("q-first", [[0,nm(0)],[1,nm(1)]], q.first, "first")}</div>` : ""}
+    <div class="q" data-help="months"><span class="lbl">Hur länge vill ni vara hemma?</span>
+      ${activeParents().map(i => `<div class="slider">
+        <label class="who" for="q-m${i}"><span class="dot p${i}"></span>${nm(i)}</label><span></span>
+        <input type="range" id="q-m${i}" min="0" max="${two ? 16 : 18}" step="0.5" value="${q.months[i]}">
+        <output class="num" id="q-mo${i}">${monthsOut(i)}</output></div>`).join("")}
+    </div>
+    <div class="q"><span class="lbl">Hur många dagar i veckan tar ni ut?</span>
+      ${seg("q-dpw", [[5,"5 dagar"],[6,"6 dagar"],[7,"7 dagar"]], q.dpw, "dpw")}
+      <span class="hint">5 dagar = helt ledig, helgerna sparas.</span></div>
+    ${two ? `<div class="q"><span class="lbl">Vill ni vara hemma tillsammans i början?</span>
+      ${seg("q-tog", [[0,"Nej"],[2,"2 veckor"],[4,"4 veckor"],[8,"8 veckor"]], q.together, "together")}</div>` : ""}
+    <div class="q" data-help="salary"><span class="lbl">Lön per månad före skatt</span>
+      <div class="row2">${activeParents().map(i => `<label class="hint" for="q-s${i}">${nm(i)}
+        <input type="number" id="q-s${i}" inputmode="numeric" min="0" step="500" value="${q.salary[i]}"></label>`).join("")}</div></div>
+    <div class="q" data-help="topup">${activeParents().map(i => `<label class="check" for="q-t${i}">
+      <input type="checkbox" id="q-t${i}" ${q.topup[i] ? "checked" : ""}> ${nm(i)} får föräldralön från arbetsgivaren (kollektivavtal)</label>`).join("")}</div>
+    <button class="cta" id="to-detail" type="button">Finjustera perioderna →</button>
+  </div>`;
+}
+document.getElementById("quick").addEventListener("click", e => {
+  const b = e.target.closest(".seg button"); if (b){
+    const g = b.parentElement.id, v = Number(b.dataset.v), q = state.quick;
+    if (g === "q-n") q.n = v; if (g === "q-first") q.first = v; if (g === "q-dpw") q.dpw = v; if (g === "q-tog") q.together = v;
+    state.help = b.parentElement.dataset.help;
+    generate(); renderQuick(); renderDetail(); renderViz(); renderHelp();
+    document.querySelector(`#${g} button[data-v="${v}"]`)?.focus();
+  }
+  if (e.target.id === "to-detail") setTab("detail");
+});
+document.getElementById("quick").addEventListener("input", e => {
+  const q = state.quick, id = e.target.id;
+  if (id === "q-birth" && e.target.value) q.birth = e.target.value;
+  const m = id.match(/^q-([mst])(\d)$/); if (m){
+    const i = Number(m[2]);
+    if (m[1] === "m"){ q.months[i] = Number(e.target.value); document.getElementById("q-mo"+i).textContent = monthsOut(i); }
+    if (m[1] === "s") q.salary[i] = Math.max(0, Number(e.target.value) || 0);
+    if (m[1] === "t") q.topup[i] = e.target.checked;
+  }
+  generate(); renderDetail(); renderViz();
+});
+
+/* ---------- Detaljerad plan ---------- */
+function renderDetail(){
+  const box = document.getElementById("detail");
+  box.innerHTML = `<div class="form">
+    <div class="panel q" data-help="birth"><label for="d-birth">Barnets födelsedatum</label>
+      <input type="date" id="d-birth" value="${state.quick.birth}"></div>
+    ${activeParents().map(i => parentCard(i)).join("")}
+  </div>`;
+}
+function parentCard(i){
+  const ps = sorted(i), cls = "p"+i;
+  const items = ps.map((p, k) => {
+    const prev = ps[k-1], clash = prev && parse(p.start) <= endOf(prev);
+    return `<div class="period ${p.level === "low" ? "low" : ""} ${state.hl === p.id ? "hl" : ""}" style="--pc:var(--${i ? "p2" : "p1"})" data-pid="${p.id}" data-i="${i}">
+      <div class="period-grid">
+        <label data-help="birth">Startdatum<input type="date" data-f="start" value="${p.start}" min="${state.quick.birth}"></label>
+        <label data-help="months">Längd (mån)<input type="number" data-f="months" min="0.5" step="0.5" value="${monthsFromWeeks(p.weeks)}"></label>
+        <label data-help="dpw">Dagar/vecka<select data-f="dpw">${[1,2,3,4,5,6,7].map(d => `<option ${d === p.dpw ? "selected" : ""}>${d}</option>`).join("")}</select></label>
+        <label data-help="level">Nivå<select data-f="level"><option value="high" ${p.level === "high" ? "selected" : ""}>Sjukpenningnivå</option><option value="low" ${p.level === "low" ? "selected" : ""}>Lägstanivå</option></select></label>
+      </div>
+      ${clash ? `<div class="inline-warn">Överlappar föregående period, som slutar ${human(endOf(prev))}. <button type="button" data-act="move" data-to="${ymd(endOf(prev)+1)}">Flytta start till ${human(endOf(prev)+1)}</button></div>` : ""}
+      <div class="period-foot"><span class="num"><strong>${human(parse(p.start))} – ${human(endOf(p))}</strong> · ${p.weeks} veckor · ${daysOf(p)} dagar</span>
+        ${ps.length > 1 ? `<button type="button" class="link" data-act="del">Ta bort</button>` : ""}</div>
+    </div>`;
+  }).join("");
+  const nextStart = ps.length ? endOf(ps[ps.length-1]) + 1 : parse(state.quick.birth);
+  return `<div class="parent">
+    <div class="parent-head"><span class="dot ${cls}"></span><input id="name-${i}" aria-label="Namn" value="${nm(i)}"></div>
+    ${items}
+    <button type="button" class="add" data-act="add" data-i="${i}" data-help="months">+ Lägg till period från ${human(nextStart)}</button>
+  </div>`;
+}
+const findP = id => state.periods.flat().find(p => p.id === id);
+document.getElementById("detail").addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "d-birth" && el.value){ state.quick.birth = el.value; renderQuick(); renderDetail(); renderViz(); return; }
+  const card = el.closest(".period"); if (!card || !el.dataset.f) return;
+  const p = findP(Number(card.dataset.pid));
+  if (el.dataset.f === "start" && el.value) p.start = el.value;
+  if (el.dataset.f === "months") p.weeks = weeksFromMonths(Math.max(0.5, Number(el.value) || 0.5));
+  if (el.dataset.f === "dpw") p.dpw = Number(el.value);
+  if (el.dataset.f === "level") p.level = el.value;
+  const f = el.dataset.f; renderDetail(); renderViz();
+  document.querySelector(`.period[data-pid="${p.id}"] [data-f="${f}"]`)?.focus();
+});
+document.getElementById("detail").addEventListener("input", e => {
+  const m = e.target.id.match(/^name-(\d)$/); if (m){ state.names[Number(m[1])] = e.target.value || "Förälder"; renderQuick(); renderViz(); }
+});
+document.getElementById("detail").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  if (b.dataset.act === "add"){
+    const i = Number(b.dataset.i), ps = sorted(i);
+    const s = ps.length ? endOf(ps[ps.length-1]) + 1 : parse(state.quick.birth);
+    const np = period(ymd(s), 4, 5, "high"); state.periods[i].push(np); state.hl = np.id;
+  } else {
+    const card = b.closest(".period"), id = Number(card.dataset.pid), i = Number(card.dataset.i);
+    if (b.dataset.act === "del") state.periods[i] = state.periods[i].filter(p => p.id !== id);
+    if (b.dataset.act === "move") findP(id).start = b.dataset.to;
+  }
+  renderDetail(); renderViz();
+});
+document.getElementById("detail").addEventListener("mouseover", e => {
+  const c = e.target.closest(".period"); const id = c ? Number(c.dataset.pid) : null;
+  if (id !== state.hl){ state.hl = id; document.querySelectorAll(".blk").forEach(b => b.classList.toggle("hl", Number(b.dataset.pid) === id)); }
+});
+
+/* ---------- Tabs ---------- */
+function setTab(t){
+  state.tab = t;
+  document.getElementById("tab-quick").setAttribute("aria-selected", t === "quick");
+  document.getElementById("tab-detail").setAttribute("aria-selected", t === "detail");
+  document.getElementById("quick").hidden = t !== "quick";
+  document.getElementById("detail").hidden = t !== "detail";
+}
+document.getElementById("tab-quick").onclick = () => setTab("quick");
+document.getElementById("tab-detail").onclick = () => setTab("detail");
+
+/* ---------- Visualisering ---------- */
+function renderViz(){ renderTimeline(); renderMeters(); renderChart(); }
+
+function renderTimeline(){
+  const birth = parse(state.quick.birth), { gaps: g, end } = gaps();
+  const span = Math.min(30, Math.max(18, Math.ceil((end - birth)/30.44) + 1));
+  const rangeEnd = addMonths(birth, span);
+  const x = n => ((Math.min(Math.max(n, birth), rangeEnd) - birth) / (rangeEnd - birth) * 100).toFixed(3) + "%";
+  const w = (s, e) => ((Math.min(e+1, rangeEnd) - Math.max(s, birth)) / (rangeEnd - birth) * 100).toFixed(3) + "%";
+  const tw = Math.max(120, (document.getElementById("timeline").clientWidth || 600) - 106);
+  const step = [1,2,3,4,6].find(k => span/k + 1 <= tw/52) || 6;
+  let axis = "";
+  for (let m = 0; m <= span; m += step){
+    const n = addMonths(birth, m), d = new Date(n*DAY);
+    axis += `<span style="left:${x(n)}">${m === 0 ? "Födsel" : MON[d.getUTCMonth()] + (d.getUTCMonth() < step && m > 0 ? " " + String(d.getUTCFullYear()).slice(2) : "")}</span>`;
+  }
+  const m12 = addMonths(birth, 12), m15 = addMonths(birth, R.DOUBLE_MONTHS);
+  const rows = activeParents().map(i => `
+    <div class="tl-label"><span class="dot p${i}"></span>${nm(i)}</div>
+    <div class="track">${state.periods[i].map(p => {
+      const s = parse(p.start), e = endOf(p); if (e < birth || s > rangeEnd) return "";
+      return `<div class="blk p${i} ${p.level === "low" ? "low" : ""} ${p.dpw < 5 ? "part" : ""} ${state.hl === p.id ? "hl" : ""}" data-pid="${p.id}" data-i="${i}"
+        style="left:${x(s)};width:${w(s,e)}" title="${human(s)} – ${human(e)} · ${p.dpw} d/v · ${p.level === "low" ? "lägstanivå" : "sjukpenningnivå"}">${p.dpw} d/v</div>`;
+    }).join("")}</div>`).join("");
+  const ov = overlaps();
+  const both = state.quick.n === 2 ? `
+    <div class="tl-label sub">Tillsammans</div>
+    <div class="track slim">${ov.map(o => `<div class="both ${o.late ? "late" : ""}" style="left:${x(o.s)};width:${w(o.s,o.e)}" title="${o.days} dubbeldagar${o.late ? " – efter 15 månader" : ""}"></div>`).join("")}</div>` : "";
+  const cover = `
+    <div class="tl-label sub">Någon hemma</div>
+    <div class="track slim"><div class="covered" style="left:0;width:${w(birth, end)}"></div>${g.map(([s,e]) => `<div class="gap" style="left:${x(s)};width:${w(s,e)}" title="Ingen hemma ${human(s)} – ${human(e)}"></div>`).join("")}</div>`;
+  document.getElementById("timeline").innerHTML = `
+    <div class="tl-wrap"><div class="tl">${rows}${both}${cover}
+      <div></div><div class="axis">${axis}</div></div>
+      <div class="markers" style="left:106px">
+        <div class="marker" style="left:${x(m12)}" title="1 år"></div>
+        ${state.quick.n === 2 ? `<div class="marker m15" style="left:${x(m15)}" title="15 månader – sista dag för dubbeldagar"></div>` : ""}
+      </div></div>
+    <div class="legend">
+      <span><i style="background:var(--p1)"></i>Sjukpenningnivå</span>
+      <span><i style="background:repeating-linear-gradient(135deg,var(--p1) 0 4px,var(--p1-soft) 4px 7px)"></i>Lägstanivå</span>
+      ${state.quick.n === 2 ? `<span><i style="background:repeating-linear-gradient(90deg,var(--p1) 0 4px,var(--p2) 4px 8px)"></i>Dubbeldagar</span>
+      <span><i style="border-left:2px dotted var(--warn);width:2px;border-radius:0"></i>15 mån</span>` : ""}
+      <span><i style="background:var(--bad-soft);border:1px dashed var(--bad)"></i>Lucka</span>
+    </div>
+    ${g.length ? `<p class="hint">${g.length === 1 ? "En lucka" : g.length + " luckor"} där ingen är hemma, från ${human(g[0][0])}.</p>` : ""}`;
+  /* markers sit over the track column */
+  const wrap = document.querySelector(".tl-wrap .markers");
+  const tracks = document.querySelector(".tl .track");
+  if (wrap && tracks){ const a = tracks.getBoundingClientRect(), p = wrap.parentElement.getBoundingClientRect();
+    wrap.style.left = (a.left - p.left) + "px"; wrap.style.width = a.width + "px"; wrap.style.right = "auto"; }
+}
+document.getElementById("timeline").addEventListener("click", e => {
+  const b = e.target.closest(".blk"); if (!b) return;
+  state.hl = Number(b.dataset.pid); setTab("detail"); renderDetail(); renderViz();
+  document.querySelector(`.period[data-pid="${b.dataset.pid}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+function meter(title, used, max, parts, sub){
+  const over = used > max;
+  const bars = parts.map(([v,c]) => `<b class="${over ? "over" : c}" style="width:${Math.min(100, v/max*100)}%"></b>`).join("");
+  return `<div class="meter ${over ? "bad" : ""}"><span class="eyebrow">${title}</span>
+    <span class="v num">${Math.max(0, max-used)} <small>kvar av ${max}</small></span>
+    <div class="bar">${bars}</div><span class="s">${sub}</span></div>`;
+}
+function renderMeters(){
+  const t = totals(), act = activeParents(), ov = overlaps();
+  const hi = act.reduce((s,i) => s + t.high[i], 0), lo = act.reduce((s,i) => s + t.low[i], 0);
+  const dd = ov.reduce((s,o) => s + o.days, 0), late = ov.some(o => o.late);
+  let html = `<div class="meters">
+    ${meter("Sjukpenningnivå", hi, R.HIGH_TOTAL, act.map(i => [t.high[i], "p"+i]), hi > R.HIGH_TOTAL ? `${hi - R.HIGH_TOTAL} dagar för mycket` : "ca 80 % av lönen")}
+    ${meter("Lägstanivå", lo, R.LOW_TOTAL, act.map(i => [t.low[i], "p"+i]), lo > R.LOW_TOTAL ? `${lo - R.LOW_TOTAL} dagar för mycket` : "180 kr per dag")}
+    ${state.quick.n === 2 ? meter("Dubbeldagar", dd, R.DOUBLE_MAX, [[dd, "p0"]], late ? "Några ligger efter 15 månader" : "före 15 månader") : ""}
+  </div>`;
+  if (state.quick.n === 2){
+    html += `<div class="reserved" data-help="reserved">` + act.map(i => {
+      const own = t.high[i] + t.low[i], highOwn = t.high[i];
+      const lost = Math.max(0, R.RESERVED - highOwn);
+      const pill = lost ? `<span class="pill warn">${lost} reserverade dagar går förlorade</span>` : `<span class="pill ok">Reserverade dagar används</span>`;
+      return `<div><span class="who"><span class="dot p${i}"></span><strong>${nm(i)}</strong></span> · <span class="num">${own} dagar</span> · ${pill}</div>`;
+    }).join("") + `</div>`;
+  }
+  document.getElementById("meters").innerHTML = html;
+}
+
+function renderChart(){
+  const data = monthly(), act = activeParents();
+  const W = 640, H = 230, L = 52, B = 26, T = 10, Rr = 8, iw = W - L - Rr, ih = H - T - B;
+  const maxV = Math.max(...data.map(d => d.v[0] + d.v[1]), data[0].normal);
+  const stepY = maxV > 80000 ? 20000 : maxV > 40000 ? 10000 : 5000;
+  const top = Math.ceil(maxV / stepY) * stepY;
+  const y = v => T + ih - v/top*ih, bw = iw/data.length;
+  let g = "";
+  for (let v = 0; v <= top; v += stepY) g += `<line class="gridl" x1="${L}" x2="${W-Rr}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v/1000} tkr</text>`;
+  let bars = "";
+  data.forEach((d, k) => {
+    let base = 0; const x0 = L + k*bw + bw*0.15, w = bw*0.7;
+    act.forEach(i => { const h = d.v[i]/top*ih; bars += `<rect class="r${i}" x="${x0}" y="${y(base + d.v[i])}" width="${w}" height="${h}" rx="2"><title>${d.label} ${d.year} · ${nm(i)}: ${kr(d.v[i])}</title></rect>`; base += d.v[i]; });
+    if (k % 2 === 0) g += `<text x="${x0 + w/2}" y="${H-8}" text-anchor="middle">${d.label}</text>`;
+  });
+  const normal = `<line class="norm" x1="${L}" x2="${W-Rr}" y1="${y(data[0].normal)}" y2="${y(data[0].normal)}"/>`;
+  const lowest = data.reduce((a,b) => (a.v[0]+a.v[1]) <= (b.v[0]+b.v[1]) ? a : b);
+  const diff = lowest.normal - (lowest.v[0]+lowest.v[1]);
+  document.getElementById("chart").innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Inkomst per månad">${g}${bars}${normal}</svg>
+    <div class="legend">${act.map(i => `<span><i style="background:var(--${i ? "p2" : "p1"})"></i>${nm(i)}</span>`).join("")}
+      <span><i style="border-top:2px dashed var(--ink);height:0;border-radius:0"></i>Om ni båda jobbar: <span class="num">${kr(data[0].normal)}</span></span></div>
+    <p class="insight">Tightast blir <strong>${lowest.label} ${lowest.year}</strong>: <span class="num">${kr(lowest.v[0]+lowest.v[1])}</span>, alltså <span class="num">${kr(diff)}</span> mindre än vanligt.</p>
+    <p class="hint">Skissen räknar med en förenklad skatt på 32,38 % för både lön och föräldrapenning.</p>`;
+}
+
+/* ---------- Start ---------- */
+generate(); renderQuick(); renderDetail(); renderViz(); renderHelp();
+addEventListener("resize", () => renderTimeline());
+</script>
