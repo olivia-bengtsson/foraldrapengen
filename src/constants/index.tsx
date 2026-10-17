@@ -25,6 +25,7 @@ const period = (
   weeks,
   daysPerWeek,
   level,
+  worksOtherDays: false,
 });
 
 const examplePeriod = (

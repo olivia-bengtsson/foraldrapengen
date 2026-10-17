@@ -17,6 +17,7 @@ import {
   validateLevelDays,
   validateLowLevelDaysRule,
   validateReservedDays,
+  validateSgiProtection,
   validateTotalDays,
 } from "./calculations";
 
@@ -28,6 +29,7 @@ const makePeriod = (overrides: Partial<ParentalPeriod> = {}): ParentalPeriod => 
   weeks: 10,
   daysPerWeek: 5,
   level: "high",
+  worksOtherDays: false,
   ...overrides,
 });
 
@@ -229,14 +231,96 @@ describe("getMonthlyIncomeForParent", () => {
   });
 
   // A2: ledighet 3 dagar/vecka hela månaden ska ge lön för de 2 arbetade dagarna.
-  test.skip("A2: deltidsledighet ger lön för arbetade dagar", () => {
-    const parent = withPeriods({ start: "2026-04-15", weeks: 9, daysPerWeek: 3 });
+  test("A2: deltidsledig som jobbar de andra dagarna får lön för dem", () => {
+    const parent = withPeriods({
+      start: "2026-04-15",
+      weeks: 9,
+      daysPerWeek: 3,
+      worksOtherDays: true,
+    });
     const benefits = calculateParentBenefits(parent, TAX_RATE);
 
     const result = getMonthlyIncomeForParent(parent, benefits, 2026, 4, TAX_RATE);
 
     const salaryPart = 35000 * (1 - TAX_RATE) * (2 / 5);
     const leavePart = benefits.dailyBenefitAfterTax * 3 * (31 / 7);
+    expect(result.total).toBeCloseTo(salaryPart + leavePart);
+  });
+
+  // A2: helt ledig men tar bara ut 3 dagar/vecka, de andra dagarna är obetalda.
+  test("A2: helt ledig med 3 dagar/vecka får ingen lön", () => {
+    const parent = withPeriods({
+      start: "2026-04-15",
+      weeks: 9,
+      daysPerWeek: 3,
+      worksOtherDays: false,
+    });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 4, TAX_RATE);
+
+    expect(result.total).toBeCloseTo(benefits.dailyBenefitAfterTax * 3 * (31 / 7));
+  });
+
+  // A2
+  test("ledig 2 dagar/vecka och jobbar resten ger 3/5 av lönen", () => {
+    const parent = withPeriods({
+      start: "2026-04-15",
+      weeks: 9,
+      daysPerWeek: 2,
+      worksOtherDays: true,
+    });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 4, TAX_RATE);
+
+    const salaryPart = 35000 * (1 - TAX_RATE) * (3 / 5);
+    const leavePart = benefits.dailyBenefitAfterTax * 2 * (31 / 7);
+    expect(result.total).toBeCloseTo(salaryPart + leavePart);
+  });
+
+  // A2
+  test("ledig 7 dagar/vecka hela månaden ger ingen lön, även om man svarat att man jobbar", () => {
+    const parent = withPeriods({
+      start: "2026-04-15",
+      weeks: 9,
+      daysPerWeek: 7,
+      worksOtherDays: true,
+    });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 4, TAX_RATE);
+
+    expect(result.total).toBeCloseTo(benefits.dailyBenefitAfterTax * 31);
+  });
+
+  // A2
+  test("ledig 3 dagar/vecka halva månaden ger full lön resten av månaden", () => {
+    // 2 veckor 1–14 juni (30 dagar i juni)
+    const parent = withPeriods({
+      start: "2026-06-01",
+      weeks: 2,
+      daysPerWeek: 3,
+      worksOtherDays: true,
+    });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 5, TAX_RATE);
+
+    const workedDays = 16 + 14 * (2 / 5);
+    const salaryPart = 35000 * (1 - TAX_RATE) * (workedDays / 30);
+    const leavePart = benefits.dailyBenefitAfterTax * 3 * 2;
+    expect(result.total).toBeCloseTo(salaryPart + leavePart);
+  });
+
+  test("ledig 5 dagar/vecka halva månaden ger halv lön", () => {
+    const parent = withPeriods({ start: "2026-06-01", weeks: 2, daysPerWeek: 5 });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 5, TAX_RATE);
+
+    const salaryPart = 35000 * (1 - TAX_RATE) * (16 / 30);
+    const leavePart = benefits.dailyBenefitAfterTax * 10;
     expect(result.total).toBeCloseTo(salaryPart + leavePart);
   });
 
@@ -419,6 +503,28 @@ describe("validateDoubleDays", () => {
     expect(result.isValid).toBe(false);
   });
 
+  // 15 månader från 31 januari är 30 april (månadens sista dag)
+  test("dubbeldagar dagen före 15-månadersdagen godkänns", () => {
+    const result = validateDoubleDays(
+      together({ start: "2027-04-29", weeks: 1, daysPerWeek: 1 }),
+      2,
+      "2026-01-31"
+    );
+
+    expect(result.isValid).toBe(true);
+  });
+
+  test("dubbeldagar på 15-månadersdagen underkänns", () => {
+    const result = validateDoubleDays(
+      together({ start: "2027-04-30", weeks: 1, daysPerWeek: 1 }),
+      2,
+      "2026-01-31"
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/2027-04-30/);
+  });
+
   // A5: varje överlappande dag ska vara före 15-månadersdagen, inte bara överlappets start.
   test.skip("A5: överlapp som slutar efter 15 månaders ålder underkänns", () => {
     const result = validateDoubleDays(
@@ -438,6 +544,64 @@ describe("validateDoubleDays", () => {
 
     // Förälder 2 har 80 + 30 = 110 dagar, varav 30 dubbeldagar, men bara 110 − 90 = 20 får vara dubbeldagar
     expect(validateDoubleDays([parent1, parent2], 2).isValid).toBe(false);
+  });
+});
+
+describe("validateSgiProtection", () => {
+  // Barnet fyller 1 år 2027-01-15
+  const BIRTH = "2026-01-15";
+  const warningsFor = (period: Partial<ParentalPeriod>, birth = BIRTH) =>
+    validateSgiProtection([withPeriods(period)], 1, birth).warnings;
+
+  test("helt ledig med färre än 5 dagar/vecka efter ettårsdagen ger varning", () => {
+    const warnings = warningsFor({ start: "2027-02-01", weeks: 4, daysPerWeek: 3 });
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/förlorar du din SGI/);
+  });
+
+  test("period som passerar ettårsdagen ger varning", () => {
+    expect(warningsFor({ start: "2027-01-04", weeks: 2, daysPerWeek: 3 })).toHaveLength(1);
+  });
+
+  test("ingen varning om man jobbar de andra dagarna", () => {
+    expect(
+      warningsFor({ start: "2027-02-01", weeks: 4, daysPerWeek: 3, worksOtherDays: true })
+    ).toEqual([]);
+  });
+
+  test("ingen varning vid 5 dagar/vecka", () => {
+    expect(warningsFor({ start: "2027-02-01", weeks: 4, daysPerWeek: 5 })).toEqual([]);
+  });
+
+  test("ingen varning för period före ettårsdagen", () => {
+    expect(warningsFor({ start: "2026-03-02", weeks: 10, daysPerWeek: 3 })).toEqual([]);
+  });
+
+  test("ingen varning utan födelsedatum", () => {
+    const parent = withPeriods({ start: "2027-02-01", weeks: 4, daysPerWeek: 3 });
+    expect(validateSgiProtection([parent], 1).warnings).toEqual([]);
+  });
+
+  test("förälder 2 räknas inte med för en ensamförälder", () => {
+    const risky = withPeriods({ start: "2027-02-01", weeks: 4, daysPerWeek: 3 });
+
+    expect(validateSgiProtection([withDays(240), risky], 1, BIRTH).warnings).toEqual([]);
+    expect(validateSgiProtection([withDays(240), risky], 2, BIRTH).warnings).toHaveLength(1);
+  });
+
+  test("barn fött 29 februari fyller 1 år 28 februari", () => {
+    // 2 veckor från 15 feb slutar 28 feb, från 14 feb slutar 27 feb
+    expect(warningsFor({ start: "2025-02-15", weeks: 2, daysPerWeek: 3 }, "2024-02-29")).toHaveLength(1);
+    expect(warningsFor({ start: "2025-02-14", weeks: 2, daysPerWeek: 3 }, "2024-02-29")).toEqual([]);
+  });
+
+  test("varningen gör inte planen ogiltig", () => {
+    const parent = withPeriods({ start: "2027-02-01", weeks: 4, daysPerWeek: 3 });
+    const result = validateAllRules([parent], 1, BIRTH);
+
+    expect(result.allWarnings).toHaveLength(1);
+    expect(result.isValid).toBe(true);
   });
 });
 

@@ -239,6 +239,7 @@ const ForaldrapengenCalculator = () => {
           weeks: 6,
           daysPerWeek: 5,
           level: "high",
+          worksOtherDays: false,
         };
 
         return {

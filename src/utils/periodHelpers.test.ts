@@ -19,6 +19,7 @@ const makePeriod = (overrides: Partial<ParentalPeriod> = {}): ParentalPeriod => 
   weeks: 4,
   daysPerWeek: 5,
   level: "high",
+  worksOtherDays: false,
   ...overrides,
 });
 

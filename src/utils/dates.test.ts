@@ -2,6 +2,8 @@
 
 import {
   addDays,
+  addMonths,
+  addYears,
   dateParts,
   daysInMonth,
   diffDays,
@@ -106,5 +108,28 @@ describe("todayDate", () => {
     jest.setSystemTime(new Date(2026, 9, 17, 23, 30));
 
     expect(todayDate()).toBe("2026-10-17");
+  });
+});
+
+describe("addMonths / addYears", () => {
+  test("vanliga datum", () => {
+    expect(addMonths("2026-03-15", 15)).toBe("2027-06-15");
+    expect(addYears("2026-10-17", 1)).toBe("2027-10-17");
+  });
+
+  test("dag som inte finns i målmånaden blir månadens sista dag", () => {
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonths("2028-01-31", 1)).toBe("2028-02-29");
+    expect(addMonths("2026-12-31", 2)).toBe("2027-02-28");
+    expect(addMonths("2026-01-31", 15)).toBe("2027-04-30");
+  });
+
+  test("negativa månader", () => {
+    expect(addMonths("2026-03-31", -1)).toBe("2026-02-28");
+  });
+
+  test("barn fött 29 februari fyller år 28 februari vanliga år", () => {
+    expect(addYears("2024-02-29", 1)).toBe("2025-02-28");
+    expect(addYears("2024-02-29", 4)).toBe("2028-02-29");
   });
 });

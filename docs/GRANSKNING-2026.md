@@ -25,6 +25,8 @@ Kunde inte granskas: filen med `EXAMPLES` och `FK_LINKS` (`src/constants/...`) f
 | SGI-krav för sjukpenningnivå de första 180 dagarna | SGI motsvarande minst 7 083 kr/mån i minst 240 dagar före födseln, annars lägre ersättning | FK |
 | Helger/lediga dagar (sedan 1 april 2025) | lediga dagar kräver uttag dagen före/efter i samma omfattning (undantag: minst 5 lediga dagar i följd) | FK |
 | Semester | föräldrapenning betalas inte under semester | FK |
+| SGI-skydd | skyddad tills barnet fyller 1 år; därefter krävs minst 5 hela dagar föräldrapenning i veckan om man är helt ledig, annars förlorar man SGI | FK SGI |
+| Ålder i månader/år | finns inte dagen i målmånaden räknas månadens sista dag (lagen om beräkning av lagstadgad tid), t.ex. född 29 feb fyller 1 år 28 feb | Lag (1930:173) |
 | Snitt kommunalskatt | 32,38 % (2025: 32,41 %) | Ekonomifakta/SCB |
 | Brytpunkt statlig skatt (under 66 år) | 660 400 kr/år, ca 55 000 kr/mån | Ekonomifakta |
 | Jobbskatteavdrag | gäller arbetsinkomst – **inte** föräldrapenning | Skatteregler |
@@ -45,7 +47,11 @@ Effekt med 35 000 kr/mån: 90 dagar × (893 − 180) = **ca 64 000 kr för mycke
 
 ### A2. Kritiskt: deltidsledighet ger noll lön
 `getMonthlyIncomeForParent` räknar kalenderdagar i perioden. Täcker perioden hela månaden blir lönen 0, även vid 2–4 dagar i veckan. Den som är ledig 3 dagar och jobbar 2 får alltså ingen lön alls.
-Åtgärd: arbetad andel per vecka = `max(0, 5 − dagarPerVecka) / 5` (vid 5-dagarsvecka). 6–7 dagar ger ingen extra lönebortfall.
+Färre än 5 dagar i veckan kan betyda två olika saker, och planen måste veta vilken:
+- **Jobbar de andra dagarna:** lön för arbetad andel per vecka = `max(0, 5 − dagarPerVecka) / 5` (vid 5-dagarsvecka). 6–7 dagar ger ingen extra lönebortfall.
+- **Helt ledig men tar bara ut färre dagar** (t.ex. för att spara dagar): de andra dagarna är obetalda, ingen lön. Efter barnets ettårsdag förlorar man då sin SGI (se B4).
+
+Åtgärd: fältet `worksOtherDays` per period (standard `false`), frågan "Jobbar du de andra dagarna?" vid färre än 5 dagar/vecka, och en varning efter ettårsdagen när `worksOtherDays` är `false`.
 
 ### A3. Två sanningskällor: antal dagar vs datum
 Totalbelopp använder `daysToTake`, men månadstabellen använder start- och slutdatum. Ändrar man ett datum utan att justera antalet dagar stämmer summorna inte överens.
@@ -105,7 +111,7 @@ Datumsträngar som `"2026-03-15"` tolkas av `new Date(...)` som midnatt UTC, med
 | B1 | translations.ts `infoCard1` (sv+en) | "SGI beräknas som 97 % av årsinkomsten", "tak ca 573 000 (2025)" | SGI är din årsinkomst av arbete, högst 592 000 kr (2026). Föräldrapenningen blir ca 80 % av SGI, högst 1 259 kr/dag. |
 | B2 | translations.ts `infoCard3` | "De första 390 dagarna får du 80 %" | 390 dagar på sjukpenningnivå (ca 80 %) och 90 på lägstanivå (180 kr). Lägstanivådagar först efter 180 sjukpenningdagar. |
 | B3 | translations.ts `infoCard4`, `pagTooltipContent` | "10–20 % extra", "0–20 %" | Med kollektivavtal ofta ca 10 % av lönen + ca 90 % av lönedelen över 49 333 kr/mån, oftast upp till 6 månader. |
-| B4 | translations.ts `infoCard8` | "SGI behålls automatiskt" | SGI är skyddad tills barnet fyller 1 år. Därefter behöver du ta ut föräldrapenning i samma omfattning som du är ledig (heltid = 5 dagar/vecka), annars kan SGI sänkas. *(Verifiera formuleringen på FK.)* |
+| B4 | translations.ts `infoCard8` | "SGI behålls automatiskt" | SGI är skyddad tills barnet fyller 1 år. Efter ettårsdagen behöver du ta ut föräldrapenning minst 5 hela dagar i veckan om du är helt ledig. Annars förlorar du din SGI, som styr din sjukpenning och föräldrapenning. Källa: FK, SGI. |
 | B5 | translations.ts `infoCard7` | saknar arbetsgivarregeln | Lägg till: meddela arbetsgivaren minst 2 månader innan (föräldraledighetslagen). |
 | B6 | translations.ts `salaryTooltipContent` | "Medellön ca 37 000 kr (2024)" | Uppdatera med SCB:s senaste siffra eller ta bort. |
 | B7 | translations.ts `monthlyIncomeSubtitle` | "lön cirka 70 % efter skatt" | "lön efter skatt enligt vald kommun" (stämmer med koden). |
@@ -133,6 +139,7 @@ InfoModal.tsx och FlashcardModal.tsx (om de inte används), `migrateParentToPeri
 ---
 
 ## Källor
+- Försäkringskassan, sjukpenninggrundande inkomst (SGI): https://www.forsakringskassan.se/privatperson/sjukpenninggrundande-inkomst-sgi
 - Försäkringskassan, aktuella belopp: https://www.forsakringskassan.se/privatperson/e-tjanster-blanketter-och-informationsmaterial/aktuella-belopp
 - Försäkringskassan, föräldrapenning: https://www.forsakringskassan.se/privatperson/familj-och-barn/foraldrapenning
 - Försäkringskassan, dubbeldagar: https://www.forsakringskassan.se/privatperson/familj-och-barn/foraldrapenning/foraldralediga-tillsammans-dubbeldagar

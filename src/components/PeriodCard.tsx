@@ -122,6 +122,44 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
           </div>
         </div>
 
+        {/* Jobbar de andra dagarna (bara vid färre än 5 dagar/vecka) */}
+        {period.daysPerWeek < 5 && (
+          <fieldset>
+            <legend className="block text-xs font-medium text-gray-600 mb-1">
+              {t.worksOtherDaysQuestion}
+            </legend>
+            <div className="flex gap-2">
+              {([false, true] as const).map((value) => (
+                <button
+                  key={String(value)}
+                  type="button"
+                  aria-pressed={period.worksOtherDays === value}
+                  onClick={() => onUpdate("worksOtherDays", value)}
+                  className={`px-4 py-1.5 rounded-lg border text-sm ${
+                    period.worksOtherDays === value
+                      ? "bg-indigo-600 border-indigo-600 text-white"
+                      : "bg-white border-gray-300 text-gray-700"
+                  }`}
+                >
+                  {value ? t.worksOtherDaysYes : t.worksOtherDaysNo}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {interpolate(
+                period.worksOtherDays
+                  ? t.worksOtherDaysHelpYes
+                  : t.worksOtherDaysHelpNo,
+                {
+                  days: period.worksOtherDays
+                    ? 5 - period.daysPerWeek
+                    : period.daysPerWeek,
+                }
+              )}
+            </p>
+          </fieldset>
+        )}
+
         {/* Ersättningsnivå */}
         <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">

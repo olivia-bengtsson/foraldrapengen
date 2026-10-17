@@ -106,6 +106,11 @@ export interface Translations {
   periodWeeksLabel: string;
   periodApproxMonths: string; // {months}
   periodSummary: string; // {start} {end} {weeks} {days}
+  worksOtherDaysQuestion: string;
+  worksOtherDaysNo: string;
+  worksOtherDaysYes: string;
+  worksOtherDaysHelpNo: string; // {days}
+  worksOtherDaysHelpYes: string; // {days}
 
   // Footer
   disclaimerText: string;
@@ -250,6 +255,12 @@ export const translations: Record<Language, Translations> = {
     periodWeeksLabel: "Längd (veckor)",
     periodApproxMonths: "≈ {months} mån",
     periodSummary: "{start} – {end} · {weeks} veckor · {days} dagar",
+    worksOtherDaysQuestion: "Jobbar du de andra dagarna?",
+    worksOtherDaysNo: "Nej",
+    worksOtherDaysYes: "Ja",
+    worksOtherDaysHelpNo:
+      "Du är ledig hela veckan men tar bara ut föräldrapenning {days} dagar. De andra dagarna är obetalda.",
+    worksOtherDaysHelpYes: "Du får lön för {days} arbetsdagar i veckan.",
 
     // Footer
     disclaimerText:
@@ -382,6 +393,12 @@ export const translations: Record<Language, Translations> = {
     periodWeeksLabel: "Length (weeks)",
     periodApproxMonths: "≈ {months} mo",
     periodSummary: "{start} – {end} · {weeks} weeks · {days} days",
+    worksOtherDaysQuestion: "Do you work the other days?",
+    worksOtherDaysNo: "No",
+    worksOtherDaysYes: "Yes",
+    worksOtherDaysHelpNo:
+      "You are off the whole week but only take parental benefit {days} days. The other days are unpaid.",
+    worksOtherDaysHelpYes: "You get salary for {days} working days a week.",
 
     // Footer
     disclaimerText:

@@ -75,3 +75,19 @@ export const formatDate = (date: string, locale: string): string => {
     timeZone: "UTC",
   }).format(new Date(day * MS_PER_DAY));
 };
+
+/**
+ * Lägger till månader. Finns inte dagen i målmånaden blir det månadens sista dag
+ * (lagen om beräkning av lagstadgad tid), t.ex. 31 jan + 1 mån = 28 feb.
+ */
+export const addMonths = (date: string, months: number): string => {
+  const { year, month, day } = dateParts(date);
+  const target = dayNumberFromParts(year, month + months, 1);
+  const { year: targetYear, month: targetMonth } = dateParts(fromDayNumber(target));
+  const lastDay = daysInMonth(targetYear, targetMonth);
+  return fromDayNumber(dayNumberFromParts(targetYear, targetMonth, Math.min(day, lastDay)));
+};
+
+/** Lägger till år. Barn födda 29 februari fyller år 28 februari vanliga år. */
+export const addYears = (date: string, years: number): string =>
+  addMonths(date, years * 12);

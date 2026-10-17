@@ -7,7 +7,15 @@ import {
   periodDays,
   periodEnd,
 } from "./periodHelpers";
-import { dateParts, diffDays, monthEndDay, monthStartDay, toDayNumber } from "./dates";
+import {
+  addMonths,
+  addYears,
+  diffDays,
+  isValidDate,
+  monthEndDay,
+  monthStartDay,
+  toDayNumber,
+} from "./dates";
 import { RULES } from "../rules";
 
 const { sgi: SGI, benefit: BENEFIT, days: DAYS, employerTopUp: TOP_UP } = RULES;
@@ -16,6 +24,8 @@ const { sgi: SGI, benefit: BENEFIT, days: DAYS, employerTopUp: TOP_UP } = RULES;
 const DEFAULT_TAX_RATE = 0.3;
 // A9: ska bli TOP_UP.typicalDays (180). Behålls tills föräldralönen rättas.
 const DEFAULT_TOP_UP_DAYS = 360;
+// Lön räknas på en arbetsvecka med 5 dagar
+const WORK_DAYS_PER_WEEK = 5;
 
 /**
  * Beräknar SGI (Sjukpenninggrundande inkomst)
@@ -233,6 +243,7 @@ export const getMonthlyIncomeForParent = (
   const monthEnd = monthEndDay(year, month);
 
   let totalDaysThisMonth = 0;
+  let workedDaysOnLeave = 0; // Arbetade dagar under lediga kalenderdagar (A2)
   let totalIncomeThisMonth = 0;
   let highLevelDaysThisMonth = 0; // För PAG-beräkning
   let lowLevelDaysThisMonth = 0; // För visuell indikering
@@ -250,6 +261,13 @@ export const getMonthlyIncomeForParent = (
       const overlapDays = overlapEnd - overlapStart + 1;
 
       totalDaysThisMonth += overlapDays;
+      // A2: jobbar man de andra dagarna (5-dagarsvecka) får man lön för dem, t.ex. 2/5 vid
+      // 3 dagar/vecka. Är man helt ledig och tar ut färre dagar är resten obetalda.
+      if (period.worksOtherDays) {
+        workedDaysOnLeave +=
+          (overlapDays * Math.max(0, WORK_DAYS_PER_WEEK - period.daysPerWeek)) /
+          WORK_DAYS_PER_WEEK;
+      }
 
       // Calculate income based on period level (high/low)
       let dailyBenefitAfterTax: number;
@@ -309,33 +327,14 @@ export const getMonthlyIncomeForParent = (
     }
   }
 
-  // If no leave days this month, return salary
-  if (totalDaysThisMonth === 0) {
-    const monthlySalaryAfterTax = parent.monthlySalary * (1 - taxRate);
-    return { total: monthlySalaryAfterTax, days: 0, highDays: 0, lowDays: 0 };
-  }
-
-  // Check if entire month is leave
+  // Lön för dagar utan ledighet och för arbetade dagar under deltidsledighet
   const daysInFullMonth = monthEnd - monthStart + 1;
-  if (totalDaysThisMonth >= daysInFullMonth) {
-    // Full month of leave
-    return {
-      total: totalIncomeThisMonth,
-      days: totalDaysThisMonth,
-      highDays: highLevelDaysThisMonth,
-      lowDays: lowLevelDaysThisMonth,
-    };
-  }
-
-  // Partial month - combine work income and leave income
-  const leaveDaysRatio = totalDaysThisMonth / daysInFullMonth;
-  const workDaysRatio = 1 - leaveDaysRatio;
-
-  const workIncome = parent.monthlySalary * (1 - taxRate) * workDaysRatio;
-  const leaveIncome = totalIncomeThisMonth;
+  const workedDays = daysInFullMonth - totalDaysThisMonth + workedDaysOnLeave;
+  const workRatio = Math.min(1, Math.max(0, workedDays / daysInFullMonth));
+  const workIncome = parent.monthlySalary * (1 - taxRate) * workRatio;
 
   return {
-    total: workIncome + leaveIncome,
+    total: workIncome + totalIncomeThisMonth,
     days: totalDaysThisMonth,
     highDays: highLevelDaysThisMonth,
     lowDays: lowLevelDaysThisMonth,
@@ -547,20 +546,15 @@ export const validateDoubleDays = (
   // Dubbeldagar räknas fram ur överlappet mellan föräldrarnas perioder
   const overlaps = getOverlaps(parents[0]?.periods ?? [], parents[1]?.periods ?? []);
 
-  if (childBirthDate) {
-    const birthDate = dateParts(childBirthDate);
+  if (childBirthDate && isValidDate(childBirthDate)) {
+    // Dagen barnet fyller 15 månader. Dubbeldagar måste tas ut före den dagen.
+    const limit = addMonths(childBirthDate, DAYS.doubleDaysMaxAgeMonths);
 
     for (const overlap of overlaps) {
-      // Barnets ålder i månader när överlappet börjar
-      // A5: varje dubbeldag ska vara före 15 månader, inte bara den första.
-      const overlapStart = dateParts(overlap.start);
-      const monthsDiff =
-        (overlapStart.year - birthDate.year) * 12 +
-        (overlapStart.month - birthDate.month);
-
-      if (monthsDiff > DAYS.doubleDaysMaxAgeMonths) {
+      // A5: varje dubbeldag ska vara före gränsen, inte bara den första.
+      if (toDayNumber(overlap.start) >= toDayNumber(limit)) {
         warnings.push(
-          `⚠️ Dubbeldagarna från ${overlap.start} tas ut när barnet är ${monthsDiff} månader gammalt. ` +
+          `⚠️ Dubbeldagarna från ${overlap.start} tas ut efter att barnet fyllt ${DAYS.doubleDaysMaxAgeMonths} månader (${limit}). ` +
             `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
         );
       }
@@ -589,6 +583,42 @@ export const validateDoubleDays = (
 };
 
 /**
+ * VARNING: SGI-skyddet. Efter barnets ettårsdag behöver den som är helt ledig ta ut
+ * föräldrapenning minst 5 dagar i veckan, annars blir SGI 0 (B4).
+ * Påverkar inte om planen är giltig.
+ */
+export const validateSgiProtection = (
+  parents: Parent[],
+  numParents: 1 | 2,
+  childBirthDate?: string
+): DaysValidation => {
+  const warnings: string[] = [];
+
+  if (childBirthDate && isValidDate(childBirthDate)) {
+    const firstBirthday = toDayNumber(addYears(childBirthDate, 1));
+
+    for (const parent of parents.slice(0, numParents)) {
+      const atRisk = (parent?.periods ?? []).some(
+        (period) =>
+          period.daysPerWeek < WORK_DAYS_PER_WEEK &&
+          !period.worksOtherDays &&
+          toDayNumber(periodEnd(period)) >= firstBirthday
+      );
+
+      if (atRisk) {
+        warnings.push(
+          `${parent.name}: Efter barnets ettårsdag behöver du ta ut föräldrapenning minst ` +
+            `${WORK_DAYS_PER_WEEK} hela dagar i veckan om du är helt ledig. ` +
+            `Annars förlorar du din SGI, som styr din sjukpenning och föräldrapenning.`
+        );
+      }
+    }
+  }
+
+  return { isValid: true, totalDays: 0, exceededDays: 0, warnings };
+};
+
+/**
  * Kör alla valideringar
  */
 export const validateAllRules = (
@@ -603,6 +633,7 @@ export const validateAllRules = (
     reservedDays: DaysValidation;
     lowLevelDays: DaysValidation;
     doubleDays: DaysValidation;
+    sgiProtection: DaysValidation;
   };
   allWarnings: string[];
 } => {
@@ -611,6 +642,7 @@ export const validateAllRules = (
   const reservedDays = validateReservedDays(parents, numParents);
   const lowLevelDays = validateLowLevelDaysRule(parents, numParents);
   const doubleDays = validateDoubleDays(parents, numParents, childBirthDate);
+  const sgiProtection = validateSgiProtection(parents, numParents, childBirthDate);
 
   const allWarnings = [
     ...totalDays.warnings,
@@ -618,6 +650,7 @@ export const validateAllRules = (
     ...reservedDays.warnings,
     ...lowLevelDays.warnings,
     ...doubleDays.warnings,
+    ...sgiProtection.warnings,
   ];
 
   const isValid =
@@ -635,6 +668,7 @@ export const validateAllRules = (
       reservedDays,
       lowLevelDays,
       doubleDays,
+      sgiProtection,
     },
     allWarnings,
   };

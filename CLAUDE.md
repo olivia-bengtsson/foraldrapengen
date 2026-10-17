@@ -46,7 +46,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 
 **Fas 2 – beräkningsfel (viktigast för användarna)**
 4. ✅ Begränsa sjukpenning- och lägstanivådagar till 390/90 och rätta startläget (A1). `validateLevelDays` varnar och markerar planen som ogiltig; dagar över gränsen räknas ändå med i beloppen. Startläget (`createInitialParents` i constants) och alla exempel följer 390/90 och testas i `src/constants/index.test.ts`.
-5. Räkna lön rätt vid deltidsledighet (A2).
+5. ✅ Räkna lön rätt vid deltidsledighet (A2). Perioden har `worksOtherDays` (standard `false`): `true` ger lön för `max(0, 5 − dagar/vecka) / 5`, `false` betyder helt ledig och ingen lön. `validateSgiProtection` varnar (utan att göra planen ogiltig) för helt ledig med färre än 5 dagar/vecka efter ettårsdagen (B4). Månader/år läggs till med `addMonths`/`addYears` (sista dagen i månaden om dagen saknas), även 15-månadersgränsen för dubbeldagar.
 6. Dubbeldagar: ingen dubbelräkning, korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6).
 7. Visa rätt SGI och flytta 0,97 in i dagersättningsformeln (A7).
 8. Föräldralön: standard 180 dagar, två procentfält, nytt namn (A9).

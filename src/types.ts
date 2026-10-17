@@ -6,6 +6,9 @@ export interface ParentalPeriod {
   weeks: number; // heltal ≥ 1
   daysPerWeek: number; // 1–7
   level: "high" | "low"; // Sjukpenningnivå eller lägstanivå
+  // Gäller vid färre än 5 dagar/vecka: true = jobbar de andra dagarna (lön för dem),
+  // false = helt ledig och de andra dagarna är obetalda (A2)
+  worksOtherDays: boolean;
 }
 
 export interface Parent {
