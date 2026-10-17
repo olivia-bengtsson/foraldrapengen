@@ -2,6 +2,7 @@
 
 import { Parent, ParentBenefits, MonthlyIncomeResult } from "../types";
 import { getTotalDaysFromPeriods } from "./periodHelpers";
+import { dateParts, diffDays, monthEndDay, monthStartDay, toDayNumber } from "./dates";
 import { RULES } from "../rules";
 
 const { sgi: SGI, benefit: BENEFIT, days: DAYS, employerTopUp: TOP_UP } = RULES;
@@ -61,11 +62,8 @@ export const getDaysBetweenDates = (
   startDate: string,
   endDate: string
 ): number => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  // A11: saknar +1, räknar inte med både start- och slutdag.
+  return Math.abs(diffDays(startDate, endDate));
 };
 
 /**
@@ -189,21 +187,21 @@ export const calculateParentBenefits = (
  */
 const calculateAccumulatedPAGDays = (
   parent: Parent,
-  beforeDate: Date
+  beforeDay: number
 ): number => {
   let accumulatedDays = 0;
 
   // Sortera perioder kronologiskt
   const sortedPeriods = [...parent.periods].sort(
-    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    (a, b) => toDayNumber(a.startDate) - toDayNumber(b.startDate)
   );
 
   for (const period of sortedPeriods) {
-    const periodStart = new Date(period.startDate);
-    const periodEnd = new Date(period.endDate);
+    const periodStart = toDayNumber(period.startDate);
+    const periodEnd = toDayNumber(period.endDate);
 
     // Om perioden startar efter vårt datum, skippa
-    if (periodStart >= beforeDate) {
+    if (periodStart >= beforeDay) {
       break;
     }
 
@@ -211,18 +209,12 @@ const calculateAccumulatedPAGDays = (
     const level = period.level || "high";
     if (level === "high") {
       // Om perioden slutar före vårt datum, räkna alla dagar
-      if (periodEnd < beforeDate) {
+      if (periodEnd < beforeDay) {
         accumulatedDays += period.daysToTake;
       } else {
-        // Perioden pågår - räkna endast dagar fram till beforeDate
-        const daysInPeriod =
-          Math.ceil(
-            (periodEnd.getTime() - periodStart.getTime()) /
-              (1000 * 60 * 60 * 24)
-          ) + 1;
-        const daysUntilBeforeDate = Math.ceil(
-          (beforeDate.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
-        );
+        // Perioden pågår - räkna endast dagar fram till beforeDay
+        const daysInPeriod = periodEnd - periodStart + 1;
+        const daysUntilBeforeDate = beforeDay - periodStart;
         const ratio = daysUntilBeforeDate / daysInPeriod;
         accumulatedDays += period.daysToTake * ratio;
       }
@@ -242,8 +234,8 @@ export const getMonthlyIncomeForParent = (
   month: number,
   taxRate: number = DEFAULT_TAX_RATE
 ): MonthlyIncomeResult => {
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 0);
+  const monthStart = monthStartDay(year, month);
+  const monthEnd = monthEndDay(year, month);
 
   let totalDaysThisMonth = 0;
   let totalIncomeThisMonth = 0;
@@ -252,26 +244,22 @@ export const getMonthlyIncomeForParent = (
 
   // Loop through all periods to see if any fall within this month
   for (const period of parent.periods) {
-    const startDate = new Date(period.startDate);
-    const endDate = new Date(period.endDate);
+    const startDay = toDayNumber(period.startDate);
+    const endDay = toDayNumber(period.endDate);
 
     // If period overlaps with this month
-    if (!(monthStart > endDate || monthEnd < startDate)) {
-      // Calculate days in this month for this period
-      const overlapStart = monthStart > startDate ? monthStart : startDate;
-      const overlapEnd = monthEnd < endDate ? monthEnd : endDate;
-      const daysInMonth =
-        Math.ceil(
-          (overlapEnd.getTime() - overlapStart.getTime()) /
-            (1000 * 60 * 60 * 24)
-        ) + 1; // +1 to include both start and end day
+    if (!(monthStart > endDay || monthEnd < startDay)) {
+      // Calculate days in this month for this period (both start and end day included)
+      const overlapStart = Math.max(monthStart, startDay);
+      const overlapEnd = Math.min(monthEnd, endDay);
+      const overlapDays = overlapEnd - overlapStart + 1;
 
-      totalDaysThisMonth += daysInMonth;
+      totalDaysThisMonth += overlapDays;
 
       // Calculate income based on period level (high/low)
       const level = period.level || "high";
       let dailyBenefitAfterTax: number;
-      const effectiveDays = period.daysPerWeek * (daysInMonth / 7);
+      const effectiveDays = period.daysPerWeek * (overlapDays / 7);
 
       if (level === "low") {
         // Lägstanivå: 180 kr/dag efter skatt
@@ -285,7 +273,7 @@ export const getMonthlyIncomeForParent = (
 
       // Beräkna inkomst för denna period
       const incomeForPeriod =
-        dailyBenefitAfterTax * period.daysPerWeek * (daysInMonth / 7);
+        dailyBenefitAfterTax * period.daysPerWeek * (overlapDays / 7);
       totalIncomeThisMonth += incomeForPeriod;
     }
   }
@@ -301,7 +289,6 @@ export const getMonthlyIncomeForParent = (
     const sgiCeilingYearly = SGI.max;
 
     // Räkna ut hur många PAG-dagar som redan förbrukats före denna månad
-    const monthStart = new Date(year, month, 1);
     const accumulatedPAGDays = calculateAccumulatedPAGDays(parent, monthStart);
 
     // Hur många PAG-dagar kan vi använda denna månad?
@@ -335,7 +322,7 @@ export const getMonthlyIncomeForParent = (
   }
 
   // Check if entire month is leave
-  const daysInFullMonth = monthEnd.getDate();
+  const daysInFullMonth = monthEnd - monthStart + 1;
   if (totalDaysThisMonth >= daysInFullMonth) {
     // Full month of leave
     return {
@@ -532,13 +519,13 @@ export const validateDoubleDays = (
 
         // Kontrollera ålder om födelsedatum finns
         if (childBirthDate) {
-          const birthDate = new Date(childBirthDate);
-          const periodStart = new Date(period.startDate);
+          const birthDate = dateParts(childBirthDate);
+          const periodStart = dateParts(period.startDate);
 
           // Beräkna barnets ålder i månader
           const monthsDiff =
-            (periodStart.getFullYear() - birthDate.getFullYear()) * 12 +
-            (periodStart.getMonth() - birthDate.getMonth());
+            (periodStart.year - birthDate.year) * 12 +
+            (periodStart.month - birthDate.month);
 
           if (monthsDiff > DAYS.doubleDaysMaxAgeMonths) {
             warnings.push(

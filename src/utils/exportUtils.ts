@@ -1,6 +1,7 @@
 import { Parent, ParentBenefits } from "../types";
 import { getTotalDaysFromPeriods } from "./periodHelpers";
 import { RULES } from "../rules";
+import { todayDate } from "./dates";
 
 /**
  * Genererar en textsummering som kan kopieras till urklipp
@@ -13,7 +14,7 @@ export const generateCopyText = (
   doubleDays: number,
   numParents: 1 | 2
 ): string => {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayDate();
 
   let text = `FÖRÄLDRAPENNING - MIN PLAN
 ═══════════════════════════════════════
@@ -123,7 +124,7 @@ export const generateExcelExport = (
   numParents: 1 | 2,
   monthlyData: any[]
 ): void => {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayDate();
 
   // Skapa CSV-innehåll (Excel kan öppna CSV)
   let csv = "\uFEFF"; // BOM för UTF-8

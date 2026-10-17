@@ -1,58 +1,22 @@
 // Konstanter och exempeldata för kalkylatorn
 
-import { generatePeriodId } from "../utils/periodHelpers";
+import { generatePeriodId, getDateAfterDays } from "../utils/periodHelpers";
+import { addDays, todayDate } from "../utils/dates";
 
 // Försäkringskassan länkar
 export { FK_LINKS } from "./FkLinks";
 
 // Regler och belopp finns i src/rules/.
 
-// Helper function to generate dates dynamically (with error handling)
-const getTodayDate = () => {
-  try {
-    return new Date().toISOString().split("T")[0];
-  } catch (error) {
-    console.error("Error getting today date:", error);
-    return "2026-01-06"; // Fallback
-  }
-};
-
-const getDateAfterDays = (
-  startDate: string,
-  days: number,
-  daysPerWeek: number,
-) => {
-  try {
-    const start = new Date(startDate);
-    if (isNaN(start.getTime())) {
-      return getTodayDate();
-    }
-    const totalDays = Math.ceil((days * 7) / daysPerWeek);
-    start.setDate(start.getDate() + totalDays);
-    return start.toISOString().split("T")[0];
-  } catch (error) {
-    console.error("Error calculating date:", error);
-    return getTodayDate();
-  }
-};
-
 // Calculate dates once at module load
-const today = getTodayDate();
+const today = todayDate();
 const endDate1 = getDateAfterDays(today, 240, 5);
-const startDate2Temp = new Date(endDate1);
-startDate2Temp.setDate(startDate2Temp.getDate() + 1);
-const startDate2 = startDate2Temp.toISOString().split("T")[0];
+const startDate2 = addDays(endDate1, 1);
 const endDate2 = getDateAfterDays(startDate2, 240, 5);
 
 const endDateMoney1 = getDateAfterDays(today, 240, 7);
-const startDateMoney2Temp = new Date(endDateMoney1);
-startDateMoney2Temp.setDate(startDateMoney2Temp.getDate() + 1);
-const startDateMoney2 = startDateMoney2Temp.toISOString().split("T")[0];
+const startDateMoney2 = addDays(endDateMoney1, 1);
 const endDateMoney2 = getDateAfterDays(startDateMoney2, 240, 7);
-
-const endDateBalanced1 = getDateAfterDays(today, 210, 6);
-const startDateBalanced2Temp = new Date(endDateBalanced1);
-startDateBalanced2Temp.setDate(startDateBalanced2Temp.getDate() + 1);
 
 const endDateSingle = getDateAfterDays(today, 480, 5);
 

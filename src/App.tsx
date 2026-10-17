@@ -13,7 +13,18 @@ import {
   validateAllRules,
 } from "./utils/calculations";
 import { EXAMPLES, ExampleKey } from "./constants";
-import { generatePeriodId } from "./utils/periodHelpers";
+import {
+  calculateDoubleDays,
+  generatePeriodId,
+  getDateAfterDays,
+} from "./utils/periodHelpers";
+import {
+  addDays,
+  dateParts,
+  fromDayNumber,
+  toDayNumber,
+  todayDate,
+} from "./utils/dates";
 import Summary from "./components/Summary";
 import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
 import ExamplesTab from "./components/ExamplesTab";
@@ -38,7 +49,7 @@ const ForaldrapengenCalculator = () => {
   const [numParents, setNumParents] = useState<1 | 2>(2);
 
   // Set birth date to today's date by default
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayDate();
   const [birthDate, setBirthDate] = useState<string>(today);
 
   const [selectedInfoCard, setSelectedInfoCard] = useState<string>("sgi");
@@ -62,29 +73,10 @@ const ForaldrapengenCalculator = () => {
     table: false, // Månadstabell
   });
 
-  // Helper functions for date calculations
-  const getTodayDate = () => {
-    return new Date().toISOString().split("T")[0];
-  };
-
-  const getDateAfterDays = (
-    startDate: string,
-    days: number,
-    daysPerWeek: number,
-  ) => {
-    const start = new Date(startDate);
-    const totalCalendarDays = Math.ceil((days * 7) / daysPerWeek);
-    start.setDate(start.getDate() + totalCalendarDays);
-    return start.toISOString().split("T")[0];
-  };
-
   // Calculate initial dates
-  const initialToday = getTodayDate();
+  const initialToday = today;
   const initialEndDate1 = getDateAfterDays(initialToday, 240, 5);
-
-  const startDate2Temp = new Date(initialEndDate1);
-  startDate2Temp.setDate(startDate2Temp.getDate() + 1);
-  const initialStartDate2 = startDate2Temp.toISOString().split("T")[0];
+  const initialStartDate2 = addDays(initialEndDate1, 1);
   const initialEndDate2 = getDateAfterDays(initialStartDate2, 240, 5);
 
   const [parents, setParents] = useState<Parent[]>([
@@ -180,65 +172,36 @@ const ForaldrapengenCalculator = () => {
   const calculatedDoubleDays = useMemo(() => {
     if (numParents !== 2) return 0;
 
-    const parent1Periods = parents[0].periods;
-    const parent2Periods = parents[1].periods;
-
-    let totalDoubleDays = 0;
-
-    for (const p1 of parent1Periods) {
-      const p1Start = new Date(p1.startDate);
-      const p1End = new Date(p1.endDate);
-
-      for (const p2 of parent2Periods) {
-        const p2Start = new Date(p2.startDate);
-        const p2End = new Date(p2.endDate);
-
-        const overlapStart = new Date(
-          Math.max(p1Start.getTime(), p2Start.getTime()),
-        );
-        const overlapEnd = new Date(Math.min(p1End.getTime(), p2End.getTime()));
-
-        if (overlapStart <= overlapEnd) {
-          const overlapDays =
-            Math.ceil(
-              (overlapEnd.getTime() - overlapStart.getTime()) /
-                (1000 * 60 * 60 * 24),
-            ) + 1;
-          const minDaysPerWeek = Math.min(p1.daysPerWeek, p2.daysPerWeek);
-          const effectiveDoubleDays = Math.ceil(
-            (overlapDays * minDaysPerWeek) / 7,
-          );
-          totalDoubleDays += effectiveDoubleDays;
-        }
-      }
-    }
-
-    return totalDoubleDays;
+    return calculateDoubleDays(parents[0].periods, parents[1].periods);
   }, [parents, numParents]);
 
   // Beräkna månadsinkomst
   const monthlyData = useMemo((): MonthlyData[] => {
-    const allDates = parents
+    const allDays = parents
       .slice(0, numParents)
       .flatMap((p) =>
         p.periods.map((period) => [
-          new Date(period.startDate),
-          new Date(period.endDate),
+          toDayNumber(period.startDate),
+          toDayNumber(period.endDate),
         ]),
       )
-      .flat();
+      .flat()
+      .filter((day) => !isNaN(day));
 
-    if (allDates.length === 0) return [];
+    if (allDays.length === 0) return [];
 
-    const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+    const first = dateParts(fromDayNumber(Math.min(...allDays)));
+    const last = dateParts(fromDayNumber(Math.max(...allDays)));
 
     const months: MonthlyData[] = [];
-    const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
 
-    while (current <= maxDate) {
-      const year = current.getFullYear();
-      const month = current.getMonth();
+    for (
+      let index = first.year * 12 + first.month;
+      index <= last.year * 12 + last.month;
+      index++
+    ) {
+      const year = Math.floor(index / 12);
+      const month = index % 12;
 
       const parent1Result: MonthlyIncomeResult = getMonthlyIncomeForParent(
         parents[0],
@@ -271,7 +234,6 @@ const ForaldrapengenCalculator = () => {
         parent2LowDays: parent2Result?.lowDays,
       });
 
-      current.setMonth(current.getMonth() + 1);
     }
 
     return months;
@@ -310,12 +272,9 @@ const ForaldrapengenCalculator = () => {
         if (parent.id !== parentId) return parent;
 
         const lastPeriod = parent.periods[parent.periods.length - 1];
-        const lastEndDate = lastPeriod
-          ? new Date(lastPeriod.endDate)
-          : new Date();
-        const newStartDateObj = new Date(lastEndDate);
-        newStartDateObj.setDate(newStartDateObj.getDate() + 1);
-        const newStartDate = newStartDateObj.toISOString().split("T")[0];
+        const newStartDate = lastPeriod
+          ? addDays(lastPeriod.endDate, 1)
+          : addDays(todayDate(), 1);
         const newEndDate = getDateAfterDays(newStartDate, 30, 5);
 
         const newPeriod = {

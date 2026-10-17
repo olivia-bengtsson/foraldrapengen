@@ -1,4 +1,11 @@
 import { Parent, ParentalPeriod } from "../types";
+import {
+  addDays,
+  fromDayNumber,
+  isValidDate,
+  toDayNumber,
+  todayDate,
+} from "./dates";
 
 // Helper to generate unique IDs for periods
 export const generatePeriodId = (): string => {
@@ -40,20 +47,14 @@ export const getTotalDaysFromPeriods = (periods: ParentalPeriod[]): number => {
 
 // Get earliest start date from all periods
 export const getEarliestStartDate = (periods: ParentalPeriod[]): string => {
-  if (periods.length === 0) return new Date().toISOString().split("T")[0];
-
-  const dates = periods.map((p) => new Date(p.startDate));
-  const earliest = new Date(Math.min(...dates.map((d) => d.getTime())));
-  return earliest.toISOString().split("T")[0];
+  const days = periods.map((p) => toDayNumber(p.startDate)).filter((d) => !isNaN(d));
+  return days.length === 0 ? todayDate() : fromDayNumber(Math.min(...days));
 };
 
 // Get latest end date from all periods
 export const getLatestEndDate = (periods: ParentalPeriod[]): string => {
-  if (periods.length === 0) return new Date().toISOString().split("T")[0];
-
-  const dates = periods.map((p) => new Date(p.endDate));
-  const latest = new Date(Math.max(...dates.map((d) => d.getTime())));
-  return latest.toISOString().split("T")[0];
+  const days = periods.map((p) => toDayNumber(p.endDate)).filter((d) => !isNaN(d));
+  return days.length === 0 ? todayDate() : fromDayNumber(Math.max(...days));
 };
 
 // Validate that periods don't overlap for the same parent
@@ -66,10 +67,10 @@ export const validateNoOverlap = (
 } => {
   for (let i = 0; i < periods.length; i++) {
     for (let j = i + 1; j < periods.length; j++) {
-      const start1 = new Date(periods[i].startDate);
-      const end1 = new Date(periods[i].endDate);
-      const start2 = new Date(periods[j].startDate);
-      const end2 = new Date(periods[j].endDate);
+      const start1 = toDayNumber(periods[i].startDate);
+      const end1 = toDayNumber(periods[i].endDate);
+      const start2 = toDayNumber(periods[j].startDate);
+      const end2 = toDayNumber(periods[j].endDate);
 
       // Check if periods overlap
       if (start1 <= end2 && start2 <= end1) {
@@ -83,4 +84,44 @@ export const validateNoOverlap = (
   }
 
   return { valid: true };
+};
+
+/**
+ * Slutdatum för en period: start + ceil(dagar × 7 / dagar per vecka) kalenderdagar.
+ * Ogiltigt startdatum ger dagens datum.
+ * OBS: räknar inte startdagen som dag 1, så slutdatumet blir en dag för sent (A3, rättas i Fas 1 punkt 3).
+ */
+export const getDateAfterDays = (
+  startDate: string,
+  days: number,
+  daysPerWeek: number
+): string => {
+  if (!isValidDate(startDate)) return todayDate();
+  return addDays(startDate, Math.ceil((days * 7) / daysPerWeek));
+};
+
+/**
+ * Dubbeldagar ur överlappet mellan två föräldrars perioder.
+ * Varje överlapp räknas som ceil(kalenderdagar × lägsta dagar per vecka / 7).
+ */
+export const calculateDoubleDays = (
+  periods1: ParentalPeriod[],
+  periods2: ParentalPeriod[]
+): number => {
+  let total = 0;
+
+  for (const p1 of periods1) {
+    for (const p2 of periods2) {
+      const overlapStart = Math.max(toDayNumber(p1.startDate), toDayNumber(p2.startDate));
+      const overlapEnd = Math.min(toDayNumber(p1.endDate), toDayNumber(p2.endDate));
+
+      if (overlapStart <= overlapEnd) {
+        const overlapDays = overlapEnd - overlapStart + 1;
+        const minDaysPerWeek = Math.min(p1.daysPerWeek, p2.daysPerWeek);
+        total += Math.ceil((overlapDays * minDaysPerWeek) / 7);
+      }
+    }
+  }
+
+  return total;
 };

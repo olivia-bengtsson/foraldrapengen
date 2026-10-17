@@ -220,6 +220,19 @@ describe("getMonthlyIncomeForParent", () => {
     expect(result.total).toBeCloseTo(180 * (1 - TAX_RATE) * 31);
   });
 
+  // A15: slutdatumet tolkades som UTC och räknades som 2 dagar i månaden.
+  test("period som slutar den 1:a ger 1 dag i den månaden", () => {
+    const parent = withDays(10, {
+      startDate: "2026-02-16",
+      endDate: "2026-03-01",
+    });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+
+    const result = getMonthlyIncomeForParent(parent, benefits, 2026, 2, TAX_RATE);
+
+    expect(result.days).toBe(1);
+  });
+
   // A2: ledighet 3 dagar/vecka hela månaden ska ge lön för de 2 arbetade dagarna.
   test.skip("A2: deltidsledighet ger lön för arbetade dagar", () => {
     const parent = withDays(40, {
