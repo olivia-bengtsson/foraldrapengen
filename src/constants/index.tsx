@@ -1,6 +1,6 @@
 // Konstanter och exempeldata för kalkylatorn
 
-import { ParentalPeriod } from "../types";
+import { Parent, ParentalPeriod } from "../types";
 import { generatePeriodId } from "../utils/periodHelpers";
 import { addDays, todayDate } from "../utils/dates";
 
@@ -12,18 +12,53 @@ export { FK_LINKS } from "./FkLinks";
 // Datum räknas en gång när modulen laddas, med start från dagens datum
 const today = todayDate();
 
-/** Period på sjukpenningnivå som börjar startWeek veckor efter idag. */
+/** Period som börjar startWeek veckor efter startdatumet. */
+const period = (
+  start: string,
+  startWeek: number,
+  weeks: number,
+  daysPerWeek: number,
+  level: ParentalPeriod["level"] = "high"
+): ParentalPeriod => ({
+  id: generatePeriodId(),
+  start: addDays(start, startWeek * 7),
+  weeks,
+  daysPerWeek,
+  level,
+});
+
 const examplePeriod = (
   startWeek: number,
   weeks: number,
-  daysPerWeek: number
-): ParentalPeriod => ({
-  id: generatePeriodId(),
-  start: addDays(today, startWeek * 7),
-  weeks,
-  daysPerWeek,
-  level: "high",
-});
+  daysPerWeek: number,
+  level: ParentalPeriod["level"] = "high"
+) => period(today, startWeek, weeks, daysPerWeek, level);
+
+/**
+ * Startläget: varje förälder tar sina 195 dagar på sjukpenningnivå (39 veckor) följt av
+ * 45 dagar på lägstanivå (9 veckor), 5 dagar/vecka. Förälder 2 tar över dagen efter förälder 1.
+ * Totalt 390 + 90 dagar (A1).
+ */
+export const createInitialParents = (start: string): Parent[] => [
+  {
+    id: 1,
+    name: "Förälder 1",
+    type: "employed",
+    monthlySalary: 35000,
+    employerTopUp: 10,
+    employerTopUpDays: 360,
+    periods: [period(start, 0, 39, 5, "high"), period(start, 39, 9, 5, "low")],
+  },
+  {
+    id: 2,
+    name: "Förälder 2",
+    type: "employed",
+    monthlySalary: 35000,
+    employerTopUp: 10,
+    employerTopUpDays: 360,
+    periods: [period(start, 48, 39, 5, "high"), period(start, 87, 9, 5, "low")],
+  },
+];
 
 // Exempel-scenarier (med dynamiska datum baserade på dagens datum)
 export const EXAMPLES = {
@@ -31,30 +66,7 @@ export const EXAMPLES = {
     name: "Maximera tid med barnet",
     description:
       "Dela jämnt, ta ledigt 5 dagar/vecka för längsta möjliga tid hemma",
-    parents: [
-      {
-        id: 1,
-        name: "Förälder 1",
-        type: "employed" as const,
-        monthlySalary: 35000,
-        employerTopUp: 10,
-        employerTopUpDays: 360,
-        periods: [
-          examplePeriod(0, 48, 5), // 240 dagar
-        ],
-      },
-      {
-        id: 2,
-        name: "Förälder 2",
-        type: "employed" as const,
-        monthlySalary: 35000,
-        employerTopUp: 10,
-        employerTopUpDays: 360,
-        periods: [
-          examplePeriod(48, 48, 5), // 240 dagar
-        ],
-      },
-    ],
+    parents: createInitialParents(today),
   },
   maxMoney: {
     name: "Maximera inkomst",
@@ -69,7 +81,8 @@ export const EXAMPLES = {
         employerTopUp: 20,
         employerTopUpDays: 360,
         periods: [
-          examplePeriod(0, 34, 7), // 238 dagar
+          examplePeriod(0, 27, 7), // 189 dagar
+          examplePeriod(27, 6, 7, "low"), // 42 dagar
         ],
       },
       {
@@ -80,7 +93,8 @@ export const EXAMPLES = {
         employerTopUp: 20,
         employerTopUpDays: 360,
         periods: [
-          examplePeriod(34, 34, 7), // 238 dagar
+          examplePeriod(33, 27, 7), // 189 dagar
+          examplePeriod(60, 6, 7, "low"), // 42 dagar
         ],
       },
     ],
@@ -111,7 +125,8 @@ export const EXAMPLES = {
         employerTopUpDays: 360,
         periods: [
           examplePeriod(21, 27, 5), // 135 dagar, efter förälder 1:s första period
-          examplePeriod(69, 27, 5), // 135 dagar, efter förälder 1:s andra period
+          examplePeriod(69, 9, 5), // 45 dagar, efter förälder 1:s andra period
+          examplePeriod(78, 18, 5, "low"), // 90 dagar
         ],
       },
     ],
@@ -128,7 +143,8 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          examplePeriod(0, 96, 5), // 480 dagar
+          examplePeriod(0, 78, 5), // 390 dagar
+          examplePeriod(78, 18, 5, "low"), // 90 dagar
         ],
       },
     ],

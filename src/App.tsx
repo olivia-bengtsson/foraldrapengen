@@ -13,7 +13,7 @@ import {
   getMonthlyIncomeForParent,
   validateAllRules,
 } from "./utils/calculations";
-import { EXAMPLES, ExampleKey } from "./constants";
+import { EXAMPLES, ExampleKey, createInitialParents } from "./constants";
 import {
   calculateDoubleDays,
   generatePeriodId,
@@ -21,7 +21,6 @@ import {
   periodEnd,
 } from "./utils/periodHelpers";
 import {
-  addDays,
   dateParts,
   fromDayNumber,
   toDayNumber,
@@ -75,45 +74,9 @@ const ForaldrapengenCalculator = () => {
     table: false, // Månadstabell
   });
 
-  // Startläge: 48 veckor × 5 dagar = 240 dagar per förälder, förälder 2 tar över dagen efter
-  const INITIAL_WEEKS = 48;
-
-  const [parents, setParents] = useState<Parent[]>([
-    {
-      id: 1,
-      name: "Förälder 1",
-      type: "employed",
-      monthlySalary: 35000,
-      employerTopUp: 10,
-      employerTopUpDays: 360,
-      periods: [
-        {
-          id: generatePeriodId(),
-          start: today,
-          weeks: INITIAL_WEEKS,
-          daysPerWeek: 5,
-          level: "high",
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "Förälder 2",
-      type: "employed",
-      monthlySalary: 35000,
-      employerTopUp: 10,
-      employerTopUpDays: 360,
-      periods: [
-        {
-          id: generatePeriodId(),
-          start: addDays(today, INITIAL_WEEKS * 7),
-          weeks: INITIAL_WEEKS,
-          daysPerWeek: 5,
-          level: "high",
-        },
-      ],
-    },
-  ]);
+  const [parents, setParents] = useState<Parent[]>(() =>
+    createInitialParents(today),
+  );
 
   const handleMunicipalityChange = (
     municipality: string,

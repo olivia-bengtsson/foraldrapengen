@@ -14,6 +14,7 @@ import {
   getMonthlyIncomeForParent,
   validateAllRules,
   validateDoubleDays,
+  validateLevelDays,
   validateLowLevelDaysRule,
   validateReservedDays,
   validateTotalDays,
@@ -274,6 +275,66 @@ describe("validateTotalDays", () => {
   });
 });
 
+describe("validateLevelDays", () => {
+  // Två föräldrar efter varandra: högNivå-dagar för förälder 1 och 2, sedan lägstanivå
+  const plan = (high1: number, high2: number, low: number) => [
+    withPeriods({ start: "2026-03-16", weeks: high1 / 5 }),
+    withPeriods(
+      { start: "2027-03-15", weeks: high2 / 5 },
+      { start: "2028-03-13", weeks: low / 5, level: "low" }
+    ),
+  ];
+
+  test("390 dagar på sjukpenningnivå och 90 på lägstanivå godkänns", () => {
+    const result = validateLevelDays(plan(195, 195, 90), 2);
+
+    expect(result.isValid).toBe(true);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("fler än 390 dagar på sjukpenningnivå underkänns", () => {
+    const result = validateLevelDays(plan(200, 195, 85), 2);
+
+    expect(result.isValid).toBe(false);
+    expect(result.exceededDays).toBe(5);
+    expect(result.warnings.join(" ")).toMatch(/395 dagar på sjukpenningnivå/);
+  });
+
+  test("391 dagar på sjukpenningnivå underkänns", () => {
+    const parents = plan(195, 195, 90);
+    parents[1].periods.push(
+      makePeriod({ id: "extra", start: "2029-03-12", weeks: 1, daysPerWeek: 1 })
+    );
+
+    expect(validateLevelDays(parents, 2).exceededDays).toBe(1);
+  });
+
+  test("fler än 90 dagar på lägstanivå underkänns", () => {
+    const result = validateLevelDays(plan(195, 190, 95), 2);
+
+    expect(result.isValid).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/95 dagar på lägstanivå/);
+  });
+
+  test("samma gränser gäller för en ensamförälder", () => {
+    const single = withPeriods(
+      { start: "2026-03-16", weeks: 78 }, // 390 dagar
+      { start: "2027-09-13", weeks: 19, level: "low" } // 95 dagar
+    );
+
+    const result = validateLevelDays([single], 1);
+
+    expect(result.isValid).toBe(false);
+    expect(result.exceededDays).toBe(5);
+  });
+
+  test("förälder 2 räknas inte med för en ensamförälder", () => {
+    const [parent1, parent2] = plan(195, 300, 0);
+
+    expect(validateLevelDays([parent1, parent2], 1).isValid).toBe(true);
+  });
+});
+
 describe("validateReservedDays", () => {
   // A6: reserverade dagar är inget krav, de går förlorade om de inte tas ut.
   test.skip("A6: varningen säger att reserverade dagar går förlorade", () => {
@@ -389,7 +450,7 @@ describe("validateAllRules", () => {
   });
 
   // A1: högst 390 dagar på sjukpenningnivå, resten är lägstanivå.
-  test.skip("A1: fler än 390 dagar på sjukpenningnivå underkänns", () => {
+  test("A1: fler än 390 dagar på sjukpenningnivå underkänns", () => {
     const result = validateAllRules([withDays(240), withDays(240, "2027-02-15")], 2);
 
     expect(result.isValid).toBe(false);

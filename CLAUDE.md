@@ -45,7 +45,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 3. ✅ Ny periodmodell enligt docs/PLANERARE.md: `{ id, start, weeks, daysPerWeek, level }`. Slutdatum (`periodEnd`, startdagen är dag 1) och antal dagar (`periodDays`) räknas fram i `periodHelpers.ts` (A3). Dubbeldagar räknas fram ur överlapp (`getOverlaps`), kryssrutan är borttagen. Nuvarande formulär är bara minimalt anpassat (längd i veckor); det nya gränssnittet byggs i Fas 3.
 
 **Fas 2 – beräkningsfel (viktigast för användarna)**
-4. Begränsa sjukpenning- och lägstanivådagar till 390/90 (per förälder 195/45) och rätta startläget (A1).
+4. ✅ Begränsa sjukpenning- och lägstanivådagar till 390/90 och rätta startläget (A1). `validateLevelDays` varnar och markerar planen som ogiltig; dagar över gränsen räknas ändå med i beloppen. Startläget (`createInitialParents` i constants) och alla exempel följer 390/90 och testas i `src/constants/index.test.ts`.
 5. Räkna lön rätt vid deltidsledighet (A2).
 6. Dubbeldagar: ingen dubbelräkning, korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6).
 7. Visa rätt SGI och flytta 0,97 in i dagersättningsformeln (A7).

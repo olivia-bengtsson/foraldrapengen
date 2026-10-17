@@ -381,6 +381,53 @@ export const validateTotalDays = (
 };
 
 /**
+ * VALIDERING: Högst 390 dagar på sjukpenningnivå och 90 på lägstanivå för barnet (A1).
+ * Dagar över gränsen räknas ändå med i beloppen, men planen markeras som ogiltig.
+ */
+export const validateLevelDays = (
+  parents: Parent[],
+  numParents: 1 | 2
+): DaysValidation => {
+  const warnings: string[] = [];
+  let highLevelDays = 0;
+  let lowLevelDays = 0;
+
+  for (const parent of parents.slice(0, numParents)) {
+    for (const period of parent?.periods ?? []) {
+      if (period.level === "high") {
+        highLevelDays += periodDays(period);
+      } else {
+        lowLevelDays += periodDays(period);
+      }
+    }
+  }
+
+  const exceededHigh = Math.max(0, highLevelDays - DAYS.highLevelTotal);
+  const exceededLow = Math.max(0, lowLevelDays - DAYS.lowLevelTotal);
+
+  if (exceededHigh > 0) {
+    warnings.push(
+      `Ni planerar ${highLevelDays} dagar på sjukpenningnivå, men det finns ${DAYS.highLevelTotal}. ` +
+        `Gör om ${exceededHigh} dagar till lägstanivå eller korta ledigheten.`
+    );
+  }
+
+  if (exceededLow > 0) {
+    warnings.push(
+      `Ni planerar ${lowLevelDays} dagar på lägstanivå, men det finns ${DAYS.lowLevelTotal}. ` +
+        `Korta ledigheten på lägstanivå med ${exceededLow} dagar.`
+    );
+  }
+
+  return {
+    isValid: warnings.length === 0,
+    totalDays: highLevelDays + lowLevelDays,
+    exceededDays: exceededHigh + exceededLow,
+    warnings,
+  };
+};
+
+/**
  * VALIDERING: Kontrollera reserverade dagar
  */
 export const validateReservedDays = (
@@ -552,6 +599,7 @@ export const validateAllRules = (
   isValid: boolean;
   validations: {
     totalDays: DaysValidation;
+    levelDays: DaysValidation;
     reservedDays: DaysValidation;
     lowLevelDays: DaysValidation;
     doubleDays: DaysValidation;
@@ -559,12 +607,14 @@ export const validateAllRules = (
   allWarnings: string[];
 } => {
   const totalDays = validateTotalDays(parents, numParents);
+  const levelDays = validateLevelDays(parents, numParents);
   const reservedDays = validateReservedDays(parents, numParents);
   const lowLevelDays = validateLowLevelDaysRule(parents, numParents);
   const doubleDays = validateDoubleDays(parents, numParents, childBirthDate);
 
   const allWarnings = [
     ...totalDays.warnings,
+    ...levelDays.warnings,
     ...reservedDays.warnings,
     ...lowLevelDays.warnings,
     ...doubleDays.warnings,
@@ -572,6 +622,7 @@ export const validateAllRules = (
 
   const isValid =
     totalDays.isValid &&
+    levelDays.isValid &&
     reservedDays.isValid &&
     lowLevelDays.isValid &&
     doubleDays.isValid;
@@ -580,6 +631,7 @@ export const validateAllRules = (
     isValid,
     validations: {
       totalDays,
+      levelDays,
       reservedDays,
       lowLevelDays,
       doubleDays,
