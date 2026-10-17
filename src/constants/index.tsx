@@ -1,6 +1,7 @@
 // Konstanter och exempeldata för kalkylatorn
 
-import { generatePeriodId, getDateAfterDays } from "../utils/periodHelpers";
+import { ParentalPeriod } from "../types";
+import { generatePeriodId } from "../utils/periodHelpers";
 import { addDays, todayDate } from "../utils/dates";
 
 // Försäkringskassan länkar
@@ -8,17 +9,21 @@ export { FK_LINKS } from "./FkLinks";
 
 // Regler och belopp finns i src/rules/.
 
-// Calculate dates once at module load
+// Datum räknas en gång när modulen laddas, med start från dagens datum
 const today = todayDate();
-const endDate1 = getDateAfterDays(today, 240, 5);
-const startDate2 = addDays(endDate1, 1);
-const endDate2 = getDateAfterDays(startDate2, 240, 5);
 
-const endDateMoney1 = getDateAfterDays(today, 240, 7);
-const startDateMoney2 = addDays(endDateMoney1, 1);
-const endDateMoney2 = getDateAfterDays(startDateMoney2, 240, 7);
-
-const endDateSingle = getDateAfterDays(today, 480, 5);
+/** Period på sjukpenningnivå som börjar startWeek veckor efter idag. */
+const examplePeriod = (
+  startWeek: number,
+  weeks: number,
+  daysPerWeek: number
+): ParentalPeriod => ({
+  id: generatePeriodId(),
+  start: addDays(today, startWeek * 7),
+  weeks,
+  daysPerWeek,
+  level: "high",
+});
 
 // Exempel-scenarier (med dynamiska datum baserade på dagens datum)
 export const EXAMPLES = {
@@ -35,13 +40,7 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 240,
-            daysPerWeek: 5,
-            startDate: today,
-            endDate: endDate1,
-          },
+          examplePeriod(0, 48, 5), // 240 dagar
         ],
       },
       {
@@ -52,13 +51,7 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 240,
-            daysPerWeek: 5,
-            startDate: startDate2,
-            endDate: endDate2,
-          },
+          examplePeriod(48, 48, 5), // 240 dagar
         ],
       },
     ],
@@ -76,13 +69,7 @@ export const EXAMPLES = {
         employerTopUp: 20,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 240,
-            daysPerWeek: 7,
-            startDate: today,
-            endDate: endDateMoney1,
-          },
+          examplePeriod(0, 34, 7), // 238 dagar
         ],
       },
       {
@@ -93,13 +80,7 @@ export const EXAMPLES = {
         employerTopUp: 20,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 240,
-            daysPerWeek: 7,
-            startDate: startDateMoney2,
-            endDate: endDateMoney2,
-          },
+          examplePeriod(34, 34, 7), // 238 dagar
         ],
       },
     ],
@@ -117,28 +98,8 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 105,
-            daysPerWeek: 5,
-            startDate: today,
-            endDate: getDateAfterDays(today, 105, 5),
-          },
-          {
-            id: generatePeriodId(),
-            daysToTake: 105,
-            daysPerWeek: 5,
-            startDate: getDateAfterDays(
-              getDateAfterDays(today, 105, 5),
-              105,
-              5,
-            ), // After parent 2's first period
-            endDate: getDateAfterDays(
-              getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
-              105,
-              5,
-            ),
-          },
+          examplePeriod(0, 21, 5), // 105 dagar
+          examplePeriod(48, 21, 5), // 105 dagar, efter förälder 2:s första period
         ],
       },
       {
@@ -149,32 +110,8 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 135,
-            daysPerWeek: 5,
-            startDate: getDateAfterDays(today, 105, 5), // After parent 1's first period
-            endDate: getDateAfterDays(getDateAfterDays(today, 105, 5), 135, 5),
-          },
-          {
-            id: generatePeriodId(),
-            daysToTake: 135,
-            daysPerWeek: 5,
-            startDate: getDateAfterDays(
-              getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
-              105,
-              5,
-            ), // After parent 1's second period
-            endDate: getDateAfterDays(
-              getDateAfterDays(
-                getDateAfterDays(getDateAfterDays(today, 105, 5), 105, 5),
-                105,
-                5,
-              ),
-              135,
-              5,
-            ),
-          },
+          examplePeriod(21, 27, 5), // 135 dagar, efter förälder 1:s första period
+          examplePeriod(69, 27, 5), // 135 dagar, efter förälder 1:s andra period
         ],
       },
     ],
@@ -191,13 +128,7 @@ export const EXAMPLES = {
         employerTopUp: 10,
         employerTopUpDays: 360,
         periods: [
-          {
-            id: generatePeriodId(),
-            daysToTake: 480,
-            daysPerWeek: 5,
-            startDate: today,
-            endDate: endDateSingle,
-          },
+          examplePeriod(0, 96, 5), // 480 dagar
         ],
       },
     ],

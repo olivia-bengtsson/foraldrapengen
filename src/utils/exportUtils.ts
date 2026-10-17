@@ -1,5 +1,5 @@
 import { Parent, ParentBenefits } from "../types";
-import { getTotalDaysFromPeriods } from "./periodHelpers";
+import { getTotalDaysFromPeriods, periodDays, periodEnd } from "./periodHelpers";
 import { RULES } from "../rules";
 import { todayDate } from "./dates";
 
@@ -39,7 +39,7 @@ Arbetsgivartillägg (PAG): ${parent.employerTopUp}%
 PLANERAD LEDIGHET:
 • Antal dagar: ${getTotalDaysFromPeriods(parent.periods)} dagar
 • Antal perioder: ${parent.periods.length}
-${parent.periods.map((p, i) => `  Period ${i + 1}: ${p.startDate} till ${p.endDate} (${p.daysToTake} dagar, ${p.daysPerWeek} d/v)`).join("\n")}
+${parent.periods.map((p, i) => `  Period ${i + 1}: ${p.start} till ${periodEnd(p)} (${p.weeks} veckor, ${periodDays(p)} dagar, ${p.daysPerWeek} d/v)`).join("\n")}
 • Ledighet i månader: ${result.monthsNeeded.toFixed(1)} mån
 
 EKONOMI:
@@ -154,7 +154,7 @@ export const generateExcelExport = (
     csv += `Antal dagar totalt,${getTotalDaysFromPeriods(parent.periods)}\n`;
     csv += `Antal perioder,${parent.periods.length}\n`;
     parent.periods.forEach((p, i) => {
-      csv += `Period ${i + 1},${p.startDate} till ${p.endDate},${p.daysToTake} dagar,${p.daysPerWeek} d/v\n`;
+      csv += `Period ${i + 1},${p.start} till ${periodEnd(p)},${p.weeks} veckor,${periodDays(p)} dagar,${p.daysPerWeek} d/v\n`;
     });
     csv += `Ledighet i månader,${result.monthsNeeded.toFixed(1)}\n`;
     csv += `\n`;

@@ -13,8 +13,8 @@ Dagens formulär kräver att man redan kan reglerna. Man väljer exakta datum, r
 ## Datamodell (löser A3)
 En period lagras som `{ id, start, weeks, daysPerWeek, level }`.
 - `start`: datumsträng `YYYY-MM-DD`, hanteras som rent datum utan tidszon (A15).
-- `weeks`: heltal. Användaren anger längd i månader (steg 0,5), som räknas om med `weeks = round(månader × 52 / 12)`.
-- `slutdatum = start + weeks × 7 − 1` och `dagar = weeks × daysPerWeek` räknas alltid fram och lagras aldrig.
+- `weeks`: heltal ≥ 1. I Detaljerad plan anges längden i veckor. Bara Snabbstart använder månader (steg 0,5), som räknas om med `weeks = round(månader × 52 / 12)` (`weeksFromMonths`).
+- `slutdatum = start + weeks × 7 − 1` (`periodEnd`) och `dagar = weeks × daysPerWeek` (`periodDays`) räknas alltid fram och lagras aldrig. Funktionerna finns i `src/utils/periodHelpers.ts`.
 - Det finns inga separata fält för slutdatum eller antal dagar, så de kan aldrig hamna i otakt.
 - Dubbeldagar är inte ett eget fält. De räknas fram ur överlappet mellan föräldrarnas perioder (A4).
 
@@ -42,7 +42,7 @@ Knappen "Finjustera perioderna →" byter till Detaljerad plan.
 
 ## Detaljerad plan
 - Ett kort per förälder med redigerbart namn och föräldrapenningnivå. Lön och föräldralön kan visas här också.
-- Varje period: startdatum, längd (mån), dagar/vecka (1–7), nivå (sjukpenningnivå / lägstanivå). Under fälten: "1 mar 2026 – 28 nov 2026 · 39 veckor · 195 dagar".
+- Varje period: startdatum, längd i veckor med ungefärligt antal månader bredvid ("18 veckor ≈ 4 mån", `monthsFromWeeks`), dagar/vecka (1–7), nivå (sjukpenningnivå / lägstanivå). Under fälten: "1 mar 2026 – 28 nov 2026 · 39 veckor · 195 dagar".
 - **+ Lägg till period från {datum}:** ny period startar dagen efter förälderns sista period.
 - Startdatum får inte vara före födseln (`min`).
 - Överlapp med egen föregående period: ingen röd ruta, utan en rad med knappen "Flytta start till {datum}".

@@ -1,12 +1,11 @@
-// Period interface for multiple leave periods per parent
+// En ledighetsperiod. Slutdatum och antal dagar räknas alltid fram (periodEnd, periodDays i
+// utils/periodHelpers.ts) och lagras aldrig, så att de inte kan hamna i otakt (A3).
 export interface ParentalPeriod {
   id: string;
-  startDate: string;
-  endDate: string;
-  daysToTake: number;
-  daysPerWeek: number;
-  level?: "high" | "low"; // Sjukpenningnivå eller lägstanivå (default: high)
-  isDoubleDay?: boolean; // Om detta är en dubbeldag (båda föräldrar samtidigt)
+  start: string; // YYYY-MM-DD
+  weeks: number; // heltal ≥ 1
+  daysPerWeek: number; // 1–7
+  level: "high" | "low"; // Sjukpenningnivå eller lägstanivå
 }
 
 export interface Parent {

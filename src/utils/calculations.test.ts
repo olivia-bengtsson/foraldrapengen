@@ -3,7 +3,6 @@
 // Kända fel är skrivna som test.skip med hänvisning till punkten i granskningen (A1, A2 ...).
 // De beskriver det korrekta beteendet och ska slås på när felet är åtgärdat.
 //
-// Testperioderna ligger mitt i månader för att undvika tidszonsfelet i A15.
 
 import { Parent, ParentalPeriod } from "../types";
 import {
@@ -24,9 +23,8 @@ const TAX_RATE = 0.3;
 
 const makePeriod = (overrides: Partial<ParentalPeriod> = {}): ParentalPeriod => ({
   id: "p1",
-  startDate: "2026-03-15",
-  endDate: "2026-05-15",
-  daysToTake: 50,
+  start: "2026-03-16",
+  weeks: 10,
   daysPerWeek: 5,
   level: "high",
   ...overrides,
@@ -43,8 +41,14 @@ const makeParent = (overrides: Partial<Parent> = {}): Parent => ({
   ...overrides,
 });
 
-const withDays = (days: number, overrides: Partial<ParentalPeriod> = {}) =>
-  makeParent({ periods: [makePeriod({ daysToTake: days, ...overrides })] });
+const withPeriods = (...periods: Partial<ParentalPeriod>[]) =>
+  makeParent({
+    periods: periods.map((p, i) => makePeriod({ id: `p${i + 1}`, ...p })),
+  });
+
+// Förälder med dagar × 5 dagar/vecka, utan hänsyn till datum
+const withDays = (days: number, start = "2026-03-16") =>
+  withPeriods({ start, weeks: days / 5 });
 
 describe("calculateSGI", () => {
   test("hög lön takas vid 592 000 kr (10 prisbasbelopp)", () => {
@@ -104,18 +108,10 @@ describe("getDaysBetweenDates", () => {
 
 describe("calculateParentBenefits", () => {
   test("sjukpenningnivå ger dagersättning, lägstanivå ger 180 kr/dag", () => {
-    const parent = makeParent({
-      periods: [
-        makePeriod({ id: "high", daysToTake: 100, level: "high" }),
-        makePeriod({
-          id: "low",
-          startDate: "2026-06-15",
-          endDate: "2026-07-15",
-          daysToTake: 20,
-          level: "low",
-        }),
-      ],
-    });
+    const parent = withPeriods(
+      { weeks: 20, level: "high" },
+      { start: "2026-08-03", weeks: 4, level: "low" }
+    );
 
     const result = calculateParentBenefits(parent, TAX_RATE);
 
@@ -130,7 +126,7 @@ describe("calculateParentBenefits", () => {
     const parent = makeParent({
       employerTopUp: 10,
       employerTopUpDays: 180,
-      periods: [makePeriod({ daysToTake: 240 })],
+      periods: [makePeriod({ weeks: 48 })], // 240 dagar
     });
 
     const result = calculateParentBenefits(parent, TAX_RATE);
@@ -149,7 +145,7 @@ describe("calculateParentBenefits", () => {
     const parent = makeParent({
       employerTopUp: 10,
       employerTopUpDays: 180,
-      periods: [makePeriod({ daysToTake: 100 })],
+      periods: [makePeriod({ weeks: 20 })], // 100 dagar
     });
 
     const result = calculateParentBenefits(parent, TAX_RATE);
@@ -164,7 +160,7 @@ describe("calculateParentBenefits", () => {
     const parent = makeParent({
       employerTopUp: 10,
       employerTopUpDays: 0,
-      periods: [makePeriod({ daysToTake: 240 })],
+      periods: [makePeriod({ weeks: 48 })], // 240 dagar
     });
 
     const result = calculateParentBenefits(parent, TAX_RATE);
@@ -180,7 +176,7 @@ describe("calculateParentBenefits", () => {
       monthlySalary: 70000,
       employerTopUp: 5,
       employerTopUpDays: 180,
-      periods: [makePeriod({ daysToTake: 180 })],
+      periods: [makePeriod({ weeks: 36 })], // 180 dagar
     });
 
     const result = calculateParentBenefits(parent, TAX_RATE);
@@ -195,7 +191,7 @@ describe("calculateParentBenefits", () => {
 
 describe("getMonthlyIncomeForParent", () => {
   test("månad utan ledighet ger lön efter skatt", () => {
-    const parent = withDays(50);
+    const parent = withPeriods({ start: "2026-03-16", weeks: 8 });
     const benefits = calculateParentBenefits(parent, TAX_RATE);
 
     // Juli 2026, perioden ligger i mars–maj
@@ -206,9 +202,9 @@ describe("getMonthlyIncomeForParent", () => {
   });
 
   test("hel månad på lägstanivå 7 dagar/vecka ger 180 kr/dag efter skatt", () => {
-    const parent = withDays(61, {
-      startDate: "2026-04-15",
-      endDate: "2026-06-15",
+    const parent = withPeriods({
+      start: "2026-04-15",
+      weeks: 9,
       daysPerWeek: 7,
       level: "low",
     });
@@ -222,10 +218,8 @@ describe("getMonthlyIncomeForParent", () => {
 
   // A15: slutdatumet tolkades som UTC och räknades som 2 dagar i månaden.
   test("period som slutar den 1:a ger 1 dag i den månaden", () => {
-    const parent = withDays(10, {
-      startDate: "2026-02-16",
-      endDate: "2026-03-01",
-    });
+    // 2 veckor från 16 feb slutar 1 mar
+    const parent = withPeriods({ start: "2026-02-16", weeks: 2 });
     const benefits = calculateParentBenefits(parent, TAX_RATE);
 
     const result = getMonthlyIncomeForParent(parent, benefits, 2026, 2, TAX_RATE);
@@ -235,11 +229,7 @@ describe("getMonthlyIncomeForParent", () => {
 
   // A2: ledighet 3 dagar/vecka hela månaden ska ge lön för de 2 arbetade dagarna.
   test.skip("A2: deltidsledighet ger lön för arbetade dagar", () => {
-    const parent = withDays(40, {
-      startDate: "2026-04-15",
-      endDate: "2026-06-15",
-      daysPerWeek: 3,
-    });
+    const parent = withPeriods({ start: "2026-04-15", weeks: 9, daysPerWeek: 3 });
     const benefits = calculateParentBenefits(parent, TAX_RATE);
 
     const result = getMonthlyIncomeForParent(parent, benefits, 2026, 4, TAX_RATE);
@@ -249,22 +239,18 @@ describe("getMonthlyIncomeForParent", () => {
     expect(result.total).toBeCloseTo(salaryPart + leavePart);
   });
 
-  // A3: antal dagar och datum är två sanningskällor. Månadstabellen ska ge samma
-  // ersättning som totalen, även när slutdatumet inte stämmer med antalet dagar.
-  test.skip("A3: summan av månaderna stämmer med totalen", () => {
-    const parent = withDays(100, {
-      startDate: "2026-03-01",
-      endDate: "2026-12-31",
-    });
+  // A3: antal dagar räknas fram ur veckor, så månadstabellen och totalen kan inte hamna i otakt.
+  test("A3: summan av dagarna per månad stämmer med totalen", () => {
+    const parent = withPeriods({ start: "2026-03-02", weeks: 20 });
     const benefits = calculateParentBenefits(parent, TAX_RATE);
 
-    let sum = 0;
-    for (let month = 2; month <= 11; month++) {
-      sum += getMonthlyIncomeForParent(parent, benefits, 2026, month, TAX_RATE)
-        .total;
+    let highDays = 0;
+    for (let month = 2; month <= 6; month++) {
+      highDays += getMonthlyIncomeForParent(parent, benefits, 2026, month, TAX_RATE)
+        .highDays;
     }
 
-    expect(sum).toBeCloseTo(benefits.fkBenefitAfterTax, 0);
+    expect(highDays).toBeCloseTo(benefits.highLevelDays);
   });
 });
 
@@ -277,7 +263,11 @@ describe("validateTotalDays", () => {
   });
 
   test("481 dagar totalt underkänns", () => {
-    const result = validateTotalDays([withDays(240), withDays(241)], 2);
+    const parent2 = withPeriods(
+      { weeks: 48 }, // 240 dagar
+      { start: "2027-03-01", weeks: 1, daysPerWeek: 1 }
+    );
+    const result = validateTotalDays([withDays(240), parent2], 2);
 
     expect(result.isValid).toBe(false);
     expect(result.exceededDays).toBe(1);
@@ -295,56 +285,72 @@ describe("validateReservedDays", () => {
 });
 
 describe("validateLowLevelDaysRule", () => {
-  const withHighAndLow = (highDays: number) =>
-    makeParent({
-      periods: [
-        makePeriod({ id: "high", daysToTake: highDays, level: "high" }),
-        makePeriod({
-          id: "low",
-          startDate: "2026-10-15",
-          endDate: "2026-11-15",
-          daysToTake: 10,
-          level: "low",
-        }),
-      ],
-    });
+  const lowPeriod: Partial<ParentalPeriod> = {
+    start: "2027-03-01",
+    weeks: 2,
+    level: "low",
+  };
 
   test("lägstanivå efter 180 dagar på sjukpenningnivå godkänns", () => {
-    expect(validateLowLevelDaysRule([withHighAndLow(180)], 1).isValid).toBe(true);
+    const parent = withPeriods({ weeks: 36 }, lowPeriod); // 180 dagar
+    expect(validateLowLevelDaysRule([parent], 1).isValid).toBe(true);
   });
 
   test("lägstanivå efter 179 dagar på sjukpenningnivå underkänns", () => {
-    expect(validateLowLevelDaysRule([withHighAndLow(179)], 1).isValid).toBe(false);
+    const parent = withPeriods(
+      { weeks: 35 }, // 175 dagar
+      { start: "2026-11-16", weeks: 1, daysPerWeek: 4 },
+      lowPeriod
+    );
+    expect(validateLowLevelDaysRule([parent], 1).isValid).toBe(false);
   });
 });
 
 describe("validateDoubleDays", () => {
-  const doubleDayParents = (days: number, startDate = "2026-03-15") => [
-    withDays(days, { isDoubleDay: true, startDate }),
-    withDays(days, { isDoubleDay: true, startDate }),
+  // Dubbeldagar räknas fram ur överlappet mellan föräldrarnas perioder
+  const together = (period: Partial<ParentalPeriod>) => [
+    withPeriods(period),
+    withPeriods(period),
   ];
 
   test("60 dubbeldagar godkänns", () => {
-    const result = validateDoubleDays(doubleDayParents(60), 2);
+    // 12 veckor tillsammans × 5 dagar
+    const result = validateDoubleDays(together({ weeks: 12 }), 2);
 
     expect(result.isValid).toBe(true);
     expect(result.totalDays).toBe(60);
   });
 
   test("61 dubbeldagar underkänns", () => {
-    const result = validateDoubleDays(doubleDayParents(61), 2);
+    // 61 kalenderdagar tillsammans, 7 dagar/vecka
+    const result = validateDoubleDays(
+      [
+        withPeriods({ start: "2026-03-16", weeks: 9, daysPerWeek: 7 }),
+        withPeriods({ start: "2026-03-18", weeks: 9, daysPerWeek: 7 }),
+      ],
+      2
+    );
 
     expect(result.isValid).toBe(false);
     expect(result.exceededDays).toBe(1);
   });
 
+  test("perioder efter varandra ger inga dubbeldagar", () => {
+    const result = validateDoubleDays(
+      [withDays(240), withDays(240, "2027-02-15")],
+      2
+    );
+
+    expect(result.totalDays).toBe(0);
+  });
+
   test("ensamförälder godkänns alltid", () => {
-    expect(validateDoubleDays(doubleDayParents(100), 1).isValid).toBe(true);
+    expect(validateDoubleDays(together({ weeks: 20 }), 1).isValid).toBe(true);
   });
 
   test("dubbeldagar efter 15 månaders ålder underkänns", () => {
     const result = validateDoubleDays(
-      doubleDayParents(20, "2027-06-15"),
+      together({ start: "2027-06-14", weeks: 4 }),
       2,
       "2026-01-15"
     );
@@ -352,11 +358,10 @@ describe("validateDoubleDays", () => {
     expect(result.isValid).toBe(false);
   });
 
-  // A5: varje överlappande dag ska vara före 15-månadersdagen, inte bara periodens start.
-  test.skip("A5: period som slutar efter 15 månaders ålder underkänns", () => {
-    const period = { isDoubleDay: true, startDate: "2027-03-15", endDate: "2027-05-15" };
+  // A5: varje överlappande dag ska vara före 15-månadersdagen, inte bara överlappets start.
+  test.skip("A5: överlapp som slutar efter 15 månaders ålder underkänns", () => {
     const result = validateDoubleDays(
-      [withDays(20, period), withDays(20, period)],
+      together({ start: "2027-03-15", weeks: 9 }),
       2,
       "2026-01-15"
     );
@@ -366,33 +371,18 @@ describe("validateDoubleDays", () => {
 
   // A5: reserverade dagar får inte användas som dubbeldagar.
   test.skip("A5: dubbeldagar från de reserverade dagarna underkänns", () => {
-    const parent2 = makeParent({
-      id: 2,
-      periods: [
-        makePeriod({ id: "own", daysToTake: 80 }),
-        makePeriod({
-          id: "double",
-          startDate: "2026-08-15",
-          endDate: "2026-09-15",
-          daysToTake: 30,
-          isDoubleDay: true,
-        }),
-      ],
-    });
-    const parent1 = withDays(30, {
-      startDate: "2026-08-15",
-      endDate: "2026-09-15",
-      isDoubleDay: true,
-    });
+    const shared: Partial<ParentalPeriod> = { start: "2026-08-03", weeks: 6 };
+    const parent1 = withPeriods(shared);
+    const parent2 = withPeriods({ start: "2026-03-16", weeks: 16 }, shared);
 
-    // Förälder 2 har 110 dagar, varav 30 dubbeldagar, men bara 110 − 90 = 20 får vara dubbeldagar
+    // Förälder 2 har 80 + 30 = 110 dagar, varav 30 dubbeldagar, men bara 110 − 90 = 20 får vara dubbeldagar
     expect(validateDoubleDays([parent1, parent2], 2).isValid).toBe(false);
   });
 });
 
 describe("validateAllRules", () => {
   test("rimlig plan för två föräldrar godkänns", () => {
-    const result = validateAllRules([withDays(195), withDays(195)], 2);
+    const result = validateAllRules([withDays(195), withDays(195, "2026-12-14")], 2);
 
     expect(result.isValid).toBe(true);
     expect(result.allWarnings).toEqual([]);
@@ -400,7 +390,7 @@ describe("validateAllRules", () => {
 
   // A1: högst 390 dagar på sjukpenningnivå, resten är lägstanivå.
   test.skip("A1: fler än 390 dagar på sjukpenningnivå underkänns", () => {
-    const result = validateAllRules([withDays(240), withDays(240)], 2);
+    const result = validateAllRules([withDays(240), withDays(240, "2027-02-15")], 2);
 
     expect(result.isValid).toBe(false);
   });

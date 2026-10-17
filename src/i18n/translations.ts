@@ -102,10 +102,27 @@ export interface Translations {
   infoCard8Title: string;
   infoCard8Content: string;
 
+  // Period card
+  periodWeeksLabel: string;
+  periodApproxMonths: string; // {months}
+  periodSummary: string; // {start} {end} {weeks} {days}
+
   // Footer
   disclaimerText: string;
   privacyFooterText: string;
 }
+
+/** Locale för datum och tal per språk */
+export const locales: Record<Language, string> = { sv: "sv-SE", en: "en-GB" };
+
+/** Ersätter {nyckel} i en översättning med värden. */
+export const interpolate = (
+  template: string,
+  values: Record<string, string | number>
+): string =>
+  template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in values ? String(values[key]) : match
+  );
 
 export const translations: Record<Language, Translations> = {
   sv: {
@@ -228,6 +245,11 @@ export const translations: Record<Language, Translations> = {
     infoCard8Title: "Skydda din SGI",
     infoCard8Content:
       "Under föräldraledighet behålls din SGI automatiskt. Jobbar du deltid och tar semester kan SGI sjunka. Undvik semester när du kombinerar arbete och föräldrapenning.",
+
+    // Period card
+    periodWeeksLabel: "Längd (veckor)",
+    periodApproxMonths: "≈ {months} mån",
+    periodSummary: "{start} – {end} · {weeks} veckor · {days} dagar",
 
     // Footer
     disclaimerText:
@@ -355,6 +377,11 @@ export const translations: Record<Language, Translations> = {
     infoCard8Title: "Protect your SGI",
     infoCard8Content:
       "During parental leave, your SGI is maintained automatically. If you work part-time and take vacation, SGI can decrease. Avoid vacation when combining work and parental benefit.",
+
+    // Period card
+    periodWeeksLabel: "Length (weeks)",
+    periodApproxMonths: "≈ {months} mo",
+    periodSummary: "{start} – {end} · {weeks} weeks · {days} days",
 
     // Footer
     disclaimerText:

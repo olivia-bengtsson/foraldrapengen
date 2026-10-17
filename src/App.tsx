@@ -6,6 +6,7 @@ import {
   MonthlyData,
   TabType,
   MonthlyIncomeResult,
+  ParentalPeriod,
 } from "./types";
 import {
   calculateParentBenefits,
@@ -16,7 +17,8 @@ import { EXAMPLES, ExampleKey } from "./constants";
 import {
   calculateDoubleDays,
   generatePeriodId,
-  getDateAfterDays,
+  nextFreeStart,
+  periodEnd,
 } from "./utils/periodHelpers";
 import {
   addDays,
@@ -73,11 +75,8 @@ const ForaldrapengenCalculator = () => {
     table: false, // Månadstabell
   });
 
-  // Calculate initial dates
-  const initialToday = today;
-  const initialEndDate1 = getDateAfterDays(initialToday, 240, 5);
-  const initialStartDate2 = addDays(initialEndDate1, 1);
-  const initialEndDate2 = getDateAfterDays(initialStartDate2, 240, 5);
+  // Startläge: 48 veckor × 5 dagar = 240 dagar per förälder, förälder 2 tar över dagen efter
+  const INITIAL_WEEKS = 48;
 
   const [parents, setParents] = useState<Parent[]>([
     {
@@ -90,10 +89,10 @@ const ForaldrapengenCalculator = () => {
       periods: [
         {
           id: generatePeriodId(),
-          daysToTake: 240,
+          start: today,
+          weeks: INITIAL_WEEKS,
           daysPerWeek: 5,
-          startDate: initialToday,
-          endDate: initialEndDate1,
+          level: "high",
         },
       ],
     },
@@ -107,10 +106,10 @@ const ForaldrapengenCalculator = () => {
       periods: [
         {
           id: generatePeriodId(),
-          daysToTake: 240,
+          start: addDays(today, INITIAL_WEEKS * 7),
+          weeks: INITIAL_WEEKS,
           daysPerWeek: 5,
-          startDate: initialStartDate2,
-          endDate: initialEndDate2,
+          level: "high",
         },
       ],
     },
@@ -181,8 +180,8 @@ const ForaldrapengenCalculator = () => {
       .slice(0, numParents)
       .flatMap((p) =>
         p.periods.map((period) => [
-          toDayNumber(period.startDate),
-          toDayNumber(period.endDate),
+          toDayNumber(period.start),
+          toDayNumber(periodEnd(period)),
         ]),
       )
       .flat()
@@ -271,18 +270,12 @@ const ForaldrapengenCalculator = () => {
       prev.map((parent) => {
         if (parent.id !== parentId) return parent;
 
-        const lastPeriod = parent.periods[parent.periods.length - 1];
-        const newStartDate = lastPeriod
-          ? addDays(lastPeriod.endDate, 1)
-          : addDays(todayDate(), 1);
-        const newEndDate = getDateAfterDays(newStartDate, 30, 5);
-
-        const newPeriod = {
+        const newPeriod: ParentalPeriod = {
           id: generatePeriodId(),
-          daysToTake: 30,
+          start: nextFreeStart(parent.periods),
+          weeks: 6,
           daysPerWeek: 5,
-          startDate: newStartDate,
-          endDate: newEndDate,
+          level: "high",
         };
 
         return {
@@ -435,7 +428,7 @@ const ForaldrapengenCalculator = () => {
                       (p) =>
                         p.monthlySalary > 0 &&
                         p.periods.length > 0 &&
-                        p.periods.every((period) => period.daysToTake > 0),
+                        p.periods.every((period) => period.weeks > 0),
                     )}
                   onToggle={() => toggleSection("parents")}
                   autoScroll={true}

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Parent, ParentBenefits, ParentalPeriod } from "../types";
 import {
   getTotalDaysFromPeriods,
+  periodDays,
   validateNoOverlap,
 } from "../utils/periodHelpers";
 import PeriodCard from "./PeriodCard";
@@ -392,26 +393,18 @@ const ParentCard: React.FC<ParentCardProps> = ({
             (() => {
               let highDays = 0;
               let lowDays = 0;
-              let doubleDays = 0;
 
               parent.periods.forEach((period) => {
-                const days = period.daysToTake || 0;
-                const level = period.level || "high";
-
-                if (period.isDoubleDay) {
-                  doubleDays += days;
-                }
-
-                if (level === "high") {
-                  highDays += days;
+                if (period.level === "high") {
+                  highDays += periodDays(period);
                 } else {
-                  lowDays += days;
+                  lowDays += periodDays(period);
                 }
               });
 
               return (
                 <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="text-center">
                       <div className="font-semibold text-green-700">
                         {language === "sv" ? "Sjukpenningnivå" : "High level"}
@@ -429,17 +422,6 @@ const ParentCard: React.FC<ParentCardProps> = ({
                       </div>
                       <div className="text-lg font-bold text-orange-900">
                         {lowDays}
-                      </div>
-                      <div className="text-gray-600">
-                        {language === "sv" ? "dagar" : "days"}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-semibold text-blue-700">
-                        {language === "sv" ? "Dubbeldagar" : "Double days"}
-                      </div>
-                      <div className="text-lg font-bold text-blue-900">
-                        {doubleDays}
                       </div>
                       <div className="text-gray-600">
                         {language === "sv" ? "dagar" : "days"}

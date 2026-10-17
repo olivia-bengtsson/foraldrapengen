@@ -2,11 +2,17 @@ import React from "react";
 import { Trash2 } from "lucide-react";
 import { ParentalPeriod } from "../types";
 import { useLanguage } from "../i18n/LanguageContext";
+import { interpolate, locales } from "../i18n/translations";
+import { formatDate } from "../utils/dates";
+import { monthsFromWeeks, periodDays, periodEnd } from "../utils/periodHelpers";
 
 interface PeriodCardProps {
   period: ParentalPeriod;
   periodIndex: number;
-  onUpdate: (field: keyof ParentalPeriod, value: any) => void;
+  onUpdate: <K extends keyof ParentalPeriod>(
+    field: K,
+    value: ParentalPeriod[K]
+  ) => void;
   onDelete: () => void;
   canDelete: boolean;
   hasOverlapError?: boolean;
@@ -20,7 +26,8 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
   canDelete,
   hasOverlapError = false,
 }) => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const locale = locales[language];
 
   return (
     <div
@@ -57,47 +64,42 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
       )}
 
       <div className="space-y-3">
-        {/* Datum */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {language === "sv" ? "Startdatum" : "Start date"}
             </label>
             <input
               type="date"
-              value={period.startDate}
-              onChange={(e) => onUpdate("startDate", e.target.value)}
+              value={period.start}
+              onChange={(e) => {
+                if (e.target.value) onUpdate("start", e.target.value);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              {language === "sv" ? "Slutdatum" : "End date"}
+              {t.periodWeeksLabel}
             </label>
-            <input
-              type="date"
-              value={period.endDate}
-              onChange={(e) => onUpdate("endDate", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Dagar */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              {language === "sv" ? "Antal dagar" : "Number of days"}
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="480"
-              value={period.daysToTake}
-              onChange={(e) => onUpdate("daysToTake", Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={period.weeks}
+                onChange={(e) =>
+                  onUpdate("weeks", Math.max(1, Math.round(Number(e.target.value) || 1)))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+              <span className="text-xs text-gray-500 whitespace-nowrap">
+                {interpolate(t.periodApproxMonths, {
+                  months: monthsFromWeeks(period.weeks).toLocaleString(locale),
+                })}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -109,15 +111,19 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
               min="1"
               max="7"
               value={period.daysPerWeek}
-              onChange={(e) => onUpdate("daysPerWeek", Number(e.target.value))}
+              onChange={(e) =>
+                onUpdate(
+                  "daysPerWeek",
+                  Math.min(7, Math.max(1, Math.round(Number(e.target.value) || 1)))
+                )
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
         </div>
 
-        {/* Ersättningsnivå och Dubbeldag */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
+        {/* Ersättningsnivå */}
+        <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {language === "sv" ? "Ersättningsnivå" : "Benefit level"}
               <span
@@ -132,7 +138,7 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
               </span>
             </label>
             <select
-              value={period.level || "high"}
+              value={period.level}
               onChange={(e) =>
                 onUpdate("level", e.target.value as "high" | "low")
               }
@@ -149,45 +155,16 @@ const PeriodCard: React.FC<PeriodCardProps> = ({
                   : "Minimum level (180 SEK/day)"}
               </option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              {language === "sv" ? "Dubbeldag" : "Double day"}
-              <span
-                className="ml-1 text-gray-400 cursor-help"
-                title={
-                  language === "sv"
-                    ? "Dubbeldagar = båda föräldrar hemma samtidigt. Max 60 dagar, innan 15 månader. Räknas som 2 dagar totalt."
-                    : "Double days = both parents at home together. Max 60 days, before 15 months. Counts as 2 days total."
-                }
-              >
-                ℹ️
-              </span>
-            </label>
-            <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
-              <input
-                type="checkbox"
-                id={`doubleDay-${period.id}`}
-                checked={period.isDoubleDay || false}
-                onChange={(e) => onUpdate("isDoubleDay", e.target.checked)}
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-              />
-              <label
-                htmlFor={`doubleDay-${period.id}`}
-                className="ml-2 text-sm text-gray-700 cursor-pointer"
-              >
-                {language === "sv"
-                  ? period.isDoubleDay
-                    ? "Ja"
-                    : "Nej"
-                  : period.isDoubleDay
-                    ? "Yes"
-                    : "No"}
-              </label>
-            </div>
-          </div>
         </div>
+
+        <p className="text-sm text-gray-700">
+          {interpolate(t.periodSummary, {
+            start: formatDate(period.start, locale),
+            end: formatDate(periodEnd(period), locale),
+            weeks: period.weeks,
+            days: periodDays(period),
+          })}
+        </p>
       </div>
     </div>
   );

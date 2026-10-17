@@ -42,7 +42,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 **Fas 1 – grund**
 1. ✅ Samla alla årsberoende konstanter i `src/rules/rules2026.ts` med år och källa (A13). Koden importerar `RULES` från `src/rules`. Kvar till Fas 2/4: standardskatten 0,3 (A8) och föräldralön 360 dagar (A9) i calculations.ts, App.tsx, constants, periodHelpers och municipalities.ts.
 2. ✅ Hantera datum som rena datum utan tidszon (A15). Rena datumfunktioner i `src/utils/dates.ts`, periodlogik (`getDateAfterDays`, `calculateDoubleDays`, överlapp) i `periodHelpers.ts`. `getDateAfterDays` räknar fortfarande slutdatum en dag för sent; det rättas i punkt 3.
-3. Ny periodmodell enligt docs/PLANERARE.md: `{ id, start, weeks, daysPerWeek, level }`, där slutdatum och antal dagar alltid räknas fram (A3). Dubbeldagar räknas fram ur överlapp, inte från en kryssruta.
+3. ✅ Ny periodmodell enligt docs/PLANERARE.md: `{ id, start, weeks, daysPerWeek, level }`. Slutdatum (`periodEnd`, startdagen är dag 1) och antal dagar (`periodDays`) räknas fram i `periodHelpers.ts` (A3). Dubbeldagar räknas fram ur överlapp (`getOverlaps`), kryssrutan är borttagen. Nuvarande formulär är bara minimalt anpassat (längd i veckor); det nya gränssnittet byggs i Fas 3.
 
 **Fas 2 – beräkningsfel (viktigast för användarna)**
 4. Begränsa sjukpenning- och lägstanivådagar till 390/90 (per förälder 195/45) och rätta startläget (A1).

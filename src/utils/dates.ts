@@ -63,3 +63,15 @@ export const monthEndDay = (year: number, month: number): number =>
 
 export const daysInMonth = (year: number, month: number): number =>
   monthEndDay(year, month) - monthStartDay(year, month) + 1;
+
+/** "2027-03-21" → "21 mars 2027" (sv) / "21 Mar 2027" (en). Tidszonen påverkar inte datumet. */
+export const formatDate = (date: string, locale: string): string => {
+  const day = toDayNumber(date);
+  if (isNaN(day)) return "";
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(day * MS_PER_DAY));
+};

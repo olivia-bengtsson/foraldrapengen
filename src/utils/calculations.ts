@@ -1,7 +1,12 @@
 // Beräkningslogik för föräldrapengen
 
 import { Parent, ParentBenefits, MonthlyIncomeResult } from "../types";
-import { getTotalDaysFromPeriods } from "./periodHelpers";
+import {
+  getOverlaps,
+  getTotalDaysFromPeriods,
+  periodDays,
+  periodEnd,
+} from "./periodHelpers";
 import { dateParts, diffDays, monthEndDay, monthStartDay, toDayNumber } from "./dates";
 import { RULES } from "../rules";
 
@@ -89,13 +94,10 @@ export const calculateParentBenefits = (
   let lowLevelDays = 0;
 
   for (const period of parent.periods) {
-    const periodDays = period.daysToTake || 0;
-    const level = period.level || "high"; // Default till högNivå
-
-    if (level === "high") {
-      highLevelDays += periodDays;
-    } else if (level === "low") {
-      lowLevelDays += periodDays;
+    if (period.level === "high") {
+      highLevelDays += periodDays(period);
+    } else {
+      lowLevelDays += periodDays(period);
     }
   }
 
@@ -152,13 +154,7 @@ export const calculateParentBenefits = (
   const totalBenefitBeforeTax = fkBenefitBeforeTax + employerTopUpBeforeTax;
   const totalBenefitAfterTax = fkBenefitAfterTax + employerTopUpAfterTax;
 
-  // Calculate total calendar days from all periods
-  let totalCalendarDays = 0;
-  for (const period of parent.periods) {
-    const periodDays = getDaysBetweenDates(period.startDate, period.endDate);
-    totalCalendarDays += periodDays;
-  }
-  const weeksNeeded = Math.ceil(totalCalendarDays / 7);
+  const weeksNeeded = parent.periods.reduce((sum, p) => sum + p.weeks, 0);
 
   const avgDailyBenefit = totalDays > 0 ? totalBenefitAfterTax / totalDays : 0;
 
@@ -193,12 +189,12 @@ const calculateAccumulatedPAGDays = (
 
   // Sortera perioder kronologiskt
   const sortedPeriods = [...parent.periods].sort(
-    (a, b) => toDayNumber(a.startDate) - toDayNumber(b.startDate)
+    (a, b) => toDayNumber(a.start) - toDayNumber(b.start)
   );
 
   for (const period of sortedPeriods) {
-    const periodStart = toDayNumber(period.startDate);
-    const periodEnd = toDayNumber(period.endDate);
+    const periodStart = toDayNumber(period.start);
+    const lastDay = toDayNumber(periodEnd(period));
 
     // Om perioden startar efter vårt datum, skippa
     if (periodStart >= beforeDay) {
@@ -206,17 +202,16 @@ const calculateAccumulatedPAGDays = (
     }
 
     // Om perioden är högNivå, räkna dagarna
-    const level = period.level || "high";
-    if (level === "high") {
+    if (period.level === "high") {
       // Om perioden slutar före vårt datum, räkna alla dagar
-      if (periodEnd < beforeDay) {
-        accumulatedDays += period.daysToTake;
+      if (lastDay < beforeDay) {
+        accumulatedDays += periodDays(period);
       } else {
         // Perioden pågår - räkna endast dagar fram till beforeDay
-        const daysInPeriod = periodEnd - periodStart + 1;
+        const daysInPeriod = lastDay - periodStart + 1;
         const daysUntilBeforeDate = beforeDay - periodStart;
         const ratio = daysUntilBeforeDate / daysInPeriod;
-        accumulatedDays += period.daysToTake * ratio;
+        accumulatedDays += periodDays(period) * ratio;
       }
     }
   }
@@ -244,8 +239,8 @@ export const getMonthlyIncomeForParent = (
 
   // Loop through all periods to see if any fall within this month
   for (const period of parent.periods) {
-    const startDay = toDayNumber(period.startDate);
-    const endDay = toDayNumber(period.endDate);
+    const startDay = toDayNumber(period.start);
+    const endDay = toDayNumber(periodEnd(period));
 
     // If period overlaps with this month
     if (!(monthStart > endDay || monthEnd < startDay)) {
@@ -257,11 +252,10 @@ export const getMonthlyIncomeForParent = (
       totalDaysThisMonth += overlapDays;
 
       // Calculate income based on period level (high/low)
-      const level = period.level || "high";
       let dailyBenefitAfterTax: number;
       const effectiveDays = period.daysPerWeek * (overlapDays / 7);
 
-      if (level === "low") {
+      if (period.level === "low") {
         // Lägstanivå: 180 kr/dag efter skatt
         dailyBenefitAfterTax = BENEFIT.lowLevelDaily * (1 - taxRate);
         lowLevelDaysThisMonth += effectiveDays;
@@ -458,12 +452,9 @@ export const validateLowLevelDaysRule = (
     if (!parent || !parent.periods) continue;
 
     for (const period of parent.periods) {
-      const level = period.level || "high"; // Default till högNivå
-      const days = period.daysToTake || 0;
-
-      if (level === "high") {
-        totalHighLevelDays += days;
-      } else if (level === "low") {
+      if (period.level === "high") {
+        totalHighLevelDays += periodDays(period);
+      } else {
         hasLowLevelDays = true;
       }
     }
@@ -506,42 +497,30 @@ export const validateDoubleDays = (
     return { isValid: true, totalDays: 0, exceededDays: 0, warnings: [] };
   }
 
-  // Räkna totala dubbeldagar
-  let totalDoubleDays = 0;
+  // Dubbeldagar räknas fram ur överlappet mellan föräldrarnas perioder
+  const overlaps = getOverlaps(parents[0]?.periods ?? [], parents[1]?.periods ?? []);
 
-  for (let i = 0; i < numParents; i++) {
-    const parent = parents[i];
-    if (!parent || !parent.periods) continue;
+  if (childBirthDate) {
+    const birthDate = dateParts(childBirthDate);
 
-    for (const period of parent.periods) {
-      if (period.isDoubleDay) {
-        const days = period.daysToTake || 0;
+    for (const overlap of overlaps) {
+      // Barnets ålder i månader när överlappet börjar
+      // A5: varje dubbeldag ska vara före 15 månader, inte bara den första.
+      const overlapStart = dateParts(overlap.start);
+      const monthsDiff =
+        (overlapStart.year - birthDate.year) * 12 +
+        (overlapStart.month - birthDate.month);
 
-        // Kontrollera ålder om födelsedatum finns
-        if (childBirthDate) {
-          const birthDate = dateParts(childBirthDate);
-          const periodStart = dateParts(period.startDate);
-
-          // Beräkna barnets ålder i månader
-          const monthsDiff =
-            (periodStart.year - birthDate.year) * 12 +
-            (periodStart.month - birthDate.month);
-
-          if (monthsDiff > DAYS.doubleDaysMaxAgeMonths) {
-            warnings.push(
-              `⚠️ Period "${period.id}" är en dubbeldag men barnet är ${monthsDiff} månader gammalt. ` +
-                `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
-            );
-          }
-        }
-
-        totalDoubleDays += days;
+      if (monthsDiff > DAYS.doubleDaysMaxAgeMonths) {
+        warnings.push(
+          `⚠️ Dubbeldagarna från ${overlap.start} tas ut när barnet är ${monthsDiff} månader gammalt. ` +
+            `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
+        );
       }
     }
   }
 
-  // Eftersom en dubbeldag räknas per förälder, dela på 2 för att få faktiska dubbeldagar
-  const actualDoubleDays = totalDoubleDays / 2;
+  const actualDoubleDays = overlaps.reduce((sum, overlap) => sum + overlap.days, 0);
   const exceededDays = Math.max(
     0,
     actualDoubleDays - DAYS.maxDoubleDays
