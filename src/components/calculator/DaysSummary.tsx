@@ -1,6 +1,10 @@
 import React from "react";
 import { Parent } from "../../types";
-import { getTotalDaysFromPeriods } from "../../utils/periodHelpers";
+import {
+  getTotalDaysFromPeriods,
+  getUsedDays,
+} from "../../utils/periodHelpers";
+import { RULES } from "../../rules";
 import InfoTooltip from "../InfoTooltip";
 import { useLanguage } from "../../i18n/LanguageContext";
 
@@ -67,11 +71,9 @@ const DaysSummary: React.FC<DaysSummaryProps> = ({
             {language === "sv" ? "Totalt tagna:" : "Total taken:"}
           </span>
           <span className="text-xl font-bold text-green-900">
-            {parents
-              .slice(0, numParents)
-              .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0) +
-              calculatedDoubleDays}{" "}
-            / 480 {language === "sv" ? "dagar" : "days"}
+            {/* Dubbeldagar ingår redan i båda föräldrarnas dagar (A4) */}
+            {getUsedDays(parents, numParents)} / {RULES.days.total}{" "}
+            {language === "sv" ? "dagar" : "days"}
           </span>
         </div>
       </div>

@@ -1,6 +1,10 @@
-import { ParentalPeriod } from "../types";
+import { Parent, ParentalPeriod } from "../types";
 import {
   calculateDoubleDays,
+  getRemainingDays,
+  getUsedDays,
+  highLevelDaysBefore,
+  overlapDaysFrom,
   getEarliestStartDate,
   getLatestEndDate,
   getOverlaps,
@@ -86,7 +90,7 @@ describe("getOverlaps / calculateDoubleDays", () => {
     const b = [makePeriod({ start: "2026-03-02", weeks: 2 })];
 
     expect(getOverlaps(a, b)).toEqual([
-      { start: "2026-03-02", end: "2026-03-15", days: 10 },
+      { start: "2026-03-02", end: "2026-03-15", daysPerWeek: 5, days: 10 },
     ]);
     expect(calculateDoubleDays(a, b)).toBe(10);
   });
@@ -146,5 +150,60 @@ describe("getEarliestStartDate / getLatestEndDate", () => {
   test("tidigaste start och senaste framräknade slut", () => {
     expect(getEarliestStartDate(periods)).toBe("2026-03-02");
     expect(getLatestEndDate(periods)).toBe("2026-05-17");
+  });
+});
+
+describe("overlapDaysFrom", () => {
+  const overlap = { start: "2026-03-02", end: "2026-03-15", daysPerWeek: 5, days: 10 };
+
+  test("dagar på eller efter datumet", () => {
+    expect(overlapDaysFrom(overlap, "2026-03-09")).toBe(5);
+    expect(overlapDaysFrom(overlap, "2026-03-01")).toBe(10);
+    expect(overlapDaysFrom(overlap, "2026-03-16")).toBe(0);
+  });
+});
+
+describe("highLevelDaysBefore", () => {
+  const periods = [
+    makePeriod({ start: "2026-03-02", weeks: 4 }), // 20 dagar
+    makePeriod({ start: "2026-03-30", weeks: 4, level: "low" }),
+    makePeriod({ start: "2026-04-27", weeks: 4 }), // 20 dagar
+  ];
+
+  test("räknar bara sjukpenningnivå före datumet", () => {
+    expect(highLevelDaysBefore(periods, "2026-03-02")).toBe(0);
+    expect(highLevelDaysBefore(periods, "2026-04-27")).toBe(20);
+    expect(highLevelDaysBefore(periods, "2027-01-01")).toBe(40);
+  });
+
+  test("pågående period räknas med andelen före datumet", () => {
+    expect(highLevelDaysBefore(periods, "2026-03-16")).toBe(10);
+  });
+});
+
+describe("getUsedDays / getRemainingDays (A4)", () => {
+  const parent = (periods: ParentalPeriod[]): Parent => ({
+    id: 1,
+    name: "Förälder",
+    type: "employed",
+    monthlySalary: 35000,
+    employerTopUp: 0,
+    employerTopUpDays: 180,
+    periods,
+  });
+
+  test("dubbeldagar räknas inte en gång till", () => {
+    // Båda lediga samma 20 veckor: 100 dubbeldagar, 200 förbrukade dagar
+    const parents = [parent([makePeriod({ weeks: 20 })]), parent([makePeriod({ weeks: 20 })])];
+
+    expect(calculateDoubleDays(parents[0].periods, parents[1].periods)).toBe(100);
+    expect(getUsedDays(parents, 2)).toBe(200);
+    expect(getRemainingDays(parents, 2)).toBe(280);
+  });
+
+  test("ensamförälder räknar bara förälder 1", () => {
+    const parents = [parent([makePeriod({ weeks: 20 })]), parent([makePeriod({ weeks: 20 })])];
+
+    expect(getUsedDays(parents, 1)).toBe(100);
   });
 });

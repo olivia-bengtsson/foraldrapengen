@@ -34,7 +34,7 @@ Formel: `dagersättning = round(SGI × 0,97 × 0,80 / 365)`, inom 250–1 259 kr
 - NaN i CSV-exportens totalkolumn för ensamföräldrar (exportUtils.ts).
 - index.html: lang="sv", titel/beskrivning, canonical, Open Graph/Twitter, theme-color #4F46E5.
 - sitemap.xml: tog bort ankarlänkarna #guide/#faq.
-- Tester för beräkningarna i `src/utils/calculations.test.ts` (CRA:s standardtest borttaget). Kända fel finns som `test.skip` med en kommentar om punkten (A1–A11). När ett fel rättas: byt `test.skip` mot `test`.
+- Tester för beräkningarna i `src/utils/calculations.test.ts` (CRA:s standardtest borttaget). Kända fel finns som `test.skip` med en kommentar om punkten. När ett fel rättas: byt `test.skip` mot `test`.
 
 ## Att göra (i ordning)
 Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planeraren beskrivs i docs/PLANERARE.md, och den klickbara skissen finns i docs/planeringsskiss.html.
@@ -47,7 +47,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 **Fas 2 – beräkningsfel (viktigast för användarna)**
 4. ✅ Begränsa sjukpenning- och lägstanivådagar till 390/90 och rätta startläget (A1). `validateLevelDays` varnar och markerar planen som ogiltig; dagar över gränsen räknas ändå med i beloppen. Startläget (`createInitialParents` i constants) och alla exempel följer 390/90 och testas i `src/constants/index.test.ts`.
 5. ✅ Räkna lön rätt vid deltidsledighet (A2). Perioden har `worksOtherDays` (standard `false`): `true` ger lön för `max(0, 5 − dagar/vecka) / 5`, `false` betyder helt ledig och ingen lön. `validateSgiProtection` varnar (utan att göra planen ogiltig) för helt ledig med färre än 5 dagar/vecka efter ettårsdagen (B4). Månader/år läggs till med `addMonths`/`addYears` (sista dagen i månaden om dagen saknas), även 15-månadersgränsen för dubbeldagar.
-6. Dubbeldagar: ingen dubbelräkning, korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6).
+6. ✅ Dubbeldagar: ingen dubbelräkning (`getUsedDays`), korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6). Lägstanivåregeln kontrolleras i tidsordning med `highLevelDaysBefore` (A16). Förlorade reserverade dagar är en varning; dubbeldagar som inte ryms utöver de reserverade, fler än 390 dagar för en förälder och dubbeldagar efter 15 månader gör planen ogiltig.
 7. Visa rätt SGI och flytta 0,97 in i dagersättningsformeln (A7).
 8. Föräldralön: standard 180 dagar, två procentfält, nytt namn (A9).
 9. Bryt ut den dubblerade logiken för föräldralön, skatt och nivåer i `calculateParentBenefits` och `getMonthlyIncomeForParent` till gemensamma, testade funktioner (görs tillsammans med 4–8).

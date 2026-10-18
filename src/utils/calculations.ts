@@ -1,9 +1,12 @@
 // Beräkningslogik för föräldrapengen
 
-import { Parent, ParentBenefits, MonthlyIncomeResult } from "../types";
+import { Parent, ParentalPeriod, ParentBenefits, MonthlyIncomeResult } from "../types";
 import {
+  calculateDoubleDays,
   getOverlaps,
   getTotalDaysFromPeriods,
+  highLevelDaysBefore,
+  overlapDaysFrom,
   periodDays,
   periodEnd,
 } from "./periodHelpers";
@@ -426,111 +429,111 @@ export const validateLevelDays = (
   };
 };
 
+const activePeriods = (parents: Parent[], numParents: 1 | 2): ParentalPeriod[] =>
+  parents.slice(0, numParents).flatMap((parent) => parent?.periods ?? []);
+
+const highDaysOf = (parent: Parent): number =>
+  getTotalDaysFromPeriods(parent.periods.filter((p) => p.level === "high"));
+
 /**
- * VALIDERING: Kontrollera reserverade dagar
+ * VALIDERING: Reserverade dagar och överföring mellan föräldrarna.
+ * - Reserverade dagar som inte tas ut går förlorade. Det är en varning, inget krav (A6).
+ *   De kan bara användas som egna dagar på sjukpenningnivå, inte som dubbeldagar.
+ * - En förälder kan få högst 240 egna + 150 överförda dagar. Fler gör planen ogiltig.
  */
 export const validateReservedDays = (
   parents: Parent[],
   numParents: 1 | 2
 ): DaysValidation => {
-  const warnings: string[] = [];
-
   if (numParents === 1) {
     return { isValid: true, totalDays: 0, exceededDays: 0, warnings: [] };
   }
 
-  const parent1Days = getTotalDaysFromPeriods(parents[0]?.periods || []);
-  const parent2Days = getTotalDaysFromPeriods(parents[1]?.periods || []);
+  const warnings: string[] = [];
+  let exceededDays = 0;
+  const doubleDays = calculateDoubleDays(parents[0].periods, parents[1].periods);
+  const maxPerParent = DAYS.perParent + DAYS.transferablePerParent;
 
-  // Varje förälder måste ta minst 90 dagar
-  if (parent1Days < DAYS.reservedPerParent) {
-    warnings.push(
-      `Förälder 1 har endast ${parent1Days} dagar. Varje förälder måste ta minst ${DAYS.reservedPerParent} reserverade dagar.`
+  parents.slice(0, 2).forEach((parent, i) => {
+    const other = parents[1 - i];
+    const ownDays = getTotalDaysFromPeriods(parent.periods);
+
+    if (ownDays > maxPerParent) {
+      exceededDays += ownDays - maxPerParent;
+      warnings.push(
+        `${parent.name} planerar ${ownDays} dagar, men kan få högst ${maxPerParent} ` +
+          `(${DAYS.perParent} egna + ${DAYS.transferablePerParent} överförda från ${other.name}).`
+      );
+    }
+
+    const reservedUsed = Math.min(
+      DAYS.reservedPerParent,
+      Math.max(0, highDaysOf(parent) - doubleDays)
     );
-  }
+    const lost = DAYS.reservedPerParent - reservedUsed;
 
-  if (parent2Days < DAYS.reservedPerParent) {
-    warnings.push(
-      `Förälder 2 har endast ${parent2Days} dagar. Varje förälder måste ta minst ${DAYS.reservedPerParent} reserverade dagar.`
-    );
-  }
-
-  // Kontrollera att inte mer än 150 dagar förs över
-  const parent1Transferred = DAYS.perParent - parent1Days;
-  const parent2Transferred = DAYS.perParent - parent2Days;
-
-  if (parent1Transferred > DAYS.transferablePerParent) {
-    warnings.push(
-      `Förälder 1 försöker föra över ${parent1Transferred} dagar, men max ${DAYS.transferablePerParent} dagar kan föras över.`
-    );
-  }
-
-  if (parent2Transferred > DAYS.transferablePerParent) {
-    warnings.push(
-      `Förälder 2 försöker föra över ${parent2Transferred} dagar, men max ${DAYS.transferablePerParent} dagar kan föras över.`
-    );
-  }
+    if (lost > 0) {
+      warnings.push(
+        doubleDays > 0
+          ? `${parent.name} planerar ${ownDays} dagar, varav ${doubleDays} dubbeldagar. ` +
+              `${lost} reserverade dagar går förlorade, eftersom de inte kan föras över eller tas ut som dubbeldagar.`
+          : `${parent.name} planerar ${ownDays} dagar. ` +
+              `${lost} reserverade dagar går förlorade, eftersom de inte kan föras över.`
+      );
+    }
+  });
 
   return {
-    isValid: warnings.length === 0,
-    totalDays: parent1Days + parent2Days,
-    exceededDays: 0,
+    isValid: exceededDays === 0,
+    totalDays: getTotalDaysFromPeriods(activePeriods(parents, 2)),
+    exceededDays,
     warnings,
   };
 };
 
 /**
- * VALIDERING: Kontrollera lägstanivådagar-regeln
- * De första 180 dagarna som tas ut för barnet MÅSTE vara sjukpenningnivå
+ * VALIDERING: Lägstanivådagar får tas ut först när 180 dagar på sjukpenningnivå har
+ * använts för barnet. Kontrolleras i tidsordning för varje period på lägstanivå (A16).
+ * Gäller även lägstanivådagar som tas ut som dubbeldagar (A5).
  */
 export const validateLowLevelDaysRule = (
   parents: Parent[],
   numParents: 1 | 2
 ): DaysValidation => {
   const warnings: string[] = [];
+  const periods = activePeriods(parents, numParents);
 
-  // Räkna totala högNivå-dagar för alla föräldrar
-  let totalHighLevelDays = 0;
-  let hasLowLevelDays = false;
+  const lowPeriods = periods
+    .filter((period) => period.level === "low")
+    .sort((a, b) => toDayNumber(a.start) - toDayNumber(b.start));
 
-  for (let i = 0; i < numParents; i++) {
-    const parent = parents[i];
-    if (!parent || !parent.periods) continue;
+  for (const period of lowPeriods) {
+    const highBefore = highLevelDaysBefore(periods, period.start);
 
-    for (const period of parent.periods) {
-      if (period.level === "high") {
-        totalHighLevelDays += periodDays(period);
-      } else {
-        hasLowLevelDays = true;
-      }
+    if (highBefore < DAYS.highLevelBeforeLowLevel) {
+      warnings.push(
+        `⚠️ Lägstanivådagarna från ${period.start} kan tas ut först när ${DAYS.highLevelBeforeLowLevel} dagar ` +
+          `på sjukpenningnivå har använts för barnet. Fram till dess har ni tagit ut ${Math.floor(highBefore)}.`
+      );
+      // En varning räcker: senare lägstanivåperioder beror på samma sak
+      break;
     }
-  }
-
-  // Om det finns lågNivådagar men mindre än 180 högNivådagar totalt
-  if (
-    hasLowLevelDays &&
-    totalHighLevelDays < DAYS.highLevelBeforeLowLevel
-  ) {
-    const daysRemaining =
-      DAYS.highLevelBeforeLowLevel - totalHighLevelDays;
-    warnings.push(
-      `⚠️ De första ${DAYS.highLevelBeforeLowLevel} dagarna måste vara på sjukpenningnivå. ` +
-        `Ni har tagit ${totalHighLevelDays} dagar på sjukpenningnivå. ` +
-        `${daysRemaining} dagar kvar innan lägstanivådagar kan börja tas ut.`
-    );
   }
 
   return {
     isValid: warnings.length === 0,
-    totalDays: totalHighLevelDays,
+    totalDays: getTotalDaysFromPeriods(periods.filter((p) => p.level === "high")),
     exceededDays: 0,
     warnings,
   };
 };
 
 /**
- * VALIDERING: Kontrollera dubbeldagar
- * Max 60 dubbeldagar, måste tas innan barnet fyller 15 månader
+ * VALIDERING: Dubbeldagar (A5). Räknas fram ur överlappet mellan föräldrarnas perioder.
+ * - Högst 60 dubbeldagar.
+ * - Varje dubbeldag måste ligga före dagen barnet fyller 15 månader.
+ * - Dubbeldagar kan inte tas från de reserverade dagarna. Varje förälder har 150 dagar
+ *   utöver de reserverade, minus det som förs över till den andra föräldern.
  */
 export const validateDoubleDays = (
   parents: Parent[],
@@ -543,40 +546,50 @@ export const validateDoubleDays = (
     return { isValid: true, totalDays: 0, exceededDays: 0, warnings: [] };
   }
 
-  // Dubbeldagar räknas fram ur överlappet mellan föräldrarnas perioder
   const overlaps = getOverlaps(parents[0]?.periods ?? [], parents[1]?.periods ?? []);
+  const doubleDays = overlaps.reduce((sum, overlap) => sum + overlap.days, 0);
 
   if (childBirthDate && isValidDate(childBirthDate)) {
     // Dagen barnet fyller 15 månader. Dubbeldagar måste tas ut före den dagen.
     const limit = addMonths(childBirthDate, DAYS.doubleDaysMaxAgeMonths);
+    const lateDays = overlaps.reduce(
+      (sum, overlap) => sum + overlapDaysFrom(overlap, limit),
+      0
+    );
 
-    for (const overlap of overlaps) {
-      // A5: varje dubbeldag ska vara före gränsen, inte bara den första.
-      if (toDayNumber(overlap.start) >= toDayNumber(limit)) {
-        warnings.push(
-          `⚠️ Dubbeldagarna från ${overlap.start} tas ut efter att barnet fyllt ${DAYS.doubleDaysMaxAgeMonths} månader (${limit}). ` +
-            `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
-        );
-      }
+    if (lateDays > 0) {
+      warnings.push(
+        `⚠️ ${lateDays} dubbeldagar ligger på eller efter dagen barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader (${limit}). ` +
+          `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
+      );
     }
   }
 
-  const actualDoubleDays = overlaps.reduce((sum, overlap) => sum + overlap.days, 0);
-  const exceededDays = Math.max(
-    0,
-    actualDoubleDays - DAYS.maxDoubleDays
-  );
+  parents.slice(0, 2).forEach((parent, i) => {
+    const otherDays = getTotalDaysFromPeriods(parents[1 - i].periods);
+    const transferredOut = Math.max(0, otherDays - DAYS.perParent);
+    const available = Math.max(0, DAYS.transferablePerParent - transferredOut);
+
+    if (doubleDays > available) {
+      warnings.push(
+        `⚠️ ${parent.name} har ${doubleDays} dubbeldagar, men bara ${available} dagar utöver de reserverade kvar. ` +
+          `Dubbeldagar kan inte tas från de reserverade dagarna.`
+      );
+    }
+  });
+
+  const exceededDays = Math.max(0, doubleDays - DAYS.maxDoubleDays);
 
   if (exceededDays > 0) {
     warnings.push(
-      `⚠️ Du har planerat ${actualDoubleDays} dubbeldagar, men max ${DAYS.maxDoubleDays} dubbeldagar tillåts. ` +
+      `⚠️ Du har planerat ${doubleDays} dubbeldagar, men max ${DAYS.maxDoubleDays} dubbeldagar tillåts. ` +
         `Du har ${exceededDays} för många dubbeldagar.`
     );
   }
 
   return {
     isValid: warnings.length === 0,
-    totalDays: actualDoubleDays,
+    totalDays: doubleDays,
     exceededDays,
     warnings,
   };

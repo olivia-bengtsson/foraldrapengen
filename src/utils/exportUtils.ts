@@ -1,5 +1,11 @@
-import { Parent, ParentBenefits } from "../types";
-import { getTotalDaysFromPeriods, periodDays, periodEnd } from "./periodHelpers";
+import { MonthlyData, Parent, ParentBenefits } from "../types";
+import {
+  getRemainingDays,
+  getTotalDaysFromPeriods,
+  getUsedDays,
+  periodDays,
+  periodEnd,
+} from "./periodHelpers";
 import { RULES } from "../rules";
 import { todayDate } from "./dates";
 
@@ -56,8 +62,8 @@ ${parent.employerTopUp > 0 ? `• Arbetsgivartillägg: ${result.employerTopUpAmo
 ═══════════════════════════════════════
 TOTALT FÖR FAMILJEN
 ───────────────────────────────────────
-• Använda dagar: ${parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0)} av ${RULES.days.total}
-• Återstående dagar: ${RULES.days.total - parents.slice(0, numParents).reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0) - doubleDays}
+• Använda dagar: ${getUsedDays(parents, numParents)} av ${RULES.days.total}
+• Återstående dagar: ${getRemainingDays(parents, numParents)}
 • Total ersättning efter skatt: ${parentResults.reduce((sum, r) => sum + r.totalBenefitAfterTax, 0).toLocaleString("sv-SE")} kr
 
 ═══════════════════════════════════════
@@ -113,19 +119,17 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
 };
 
 /**
- * Genererar Excel-fil med all data
- * Använder en enkel CSV-format som Excel kan öppna
+ * Bygger CSV-innehållet (Excel kan öppna CSV)
  */
-export const generateExcelExport = (
+export const generateCsv = (
   parents: Parent[],
   parentResults: ParentBenefits[],
   birthDate: string,
   doubleDays: number,
   numParents: 1 | 2,
-  monthlyData: any[]
-): void => {
-  const today = todayDate();
-
+  monthlyData: MonthlyData[],
+  today: string = todayDate()
+): string => {
   // Skapa CSV-innehåll (Excel kan öppna CSV)
   let csv = "\uFEFF"; // BOM för UTF-8
 
@@ -173,10 +177,8 @@ export const generateExcelExport = (
 
   // Totalt
   csv += "TOTALT FÖR FAMILJEN\n";
-  const totalDays = parents
-    .slice(0, numParents)
-    .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
-  const remainingDays = RULES.days.total - totalDays - doubleDays;
+  const totalDays = getUsedDays(parents, numParents);
+  const remainingDays = getRemainingDays(parents, numParents);
   const totalBenefit = parentResults.reduce(
     (sum, r) => sum + r.totalBenefitAfterTax,
     0
@@ -208,6 +210,31 @@ export const generateExcelExport = (
   csv += "Denna beräkning är vägledande.\n";
   csv += "För exakta belopp kontakta Försäkringskassan.\n";
   csv += "Data sparas INTE på servern.\n";
+
+  return csv;
+};
+
+/**
+ * Genererar Excel-fil med all data och laddar ner den
+ */
+export const generateExcelExport = (
+  parents: Parent[],
+  parentResults: ParentBenefits[],
+  birthDate: string,
+  doubleDays: number,
+  numParents: 1 | 2,
+  monthlyData: MonthlyData[]
+): void => {
+  const today = todayDate();
+  const csv = generateCsv(
+    parents,
+    parentResults,
+    birthDate,
+    doubleDays,
+    numParents,
+    monthlyData,
+    today
+  );
 
   // Skapa och ladda ner fil
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

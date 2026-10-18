@@ -63,11 +63,14 @@ Varje förälders dagar innehåller redan de överlappande dagarna. Ändå lägg
 
 ### A5. Dubbeldagsvalideringen är ofullständig
 - Åldern kontrolleras mot periodens **startdatum**. Varje överlappande dag ska vara före 15-månadersdagen.
-- Reserverade dagar får inte användas som dubbeldagar: varna om en förälders dubbeldagar är fler än förälderns dagar − 90.
-- Lägstanivå som dubbeldag först efter 180 sjukpenningdagar.
+- Reserverade dagar får inte användas som dubbeldagar. Skilj på två fall:
+  - **Ogiltig plan:** dubbeldagarna ryms inte utöver de reserverade dagarna. Varje förälder har 150 dagar utöver de reserverade, minus det som förs över till den andra föräldern (`max(0, andra förälderns dagar − 240)`).
+  - **Varning (förlorade reserverade dagar):** dubbeldagarna ryms, men förälderns egna dagar på sjukpenningnivå utöver dubbeldagarna är färre än 90. Reserverade dagar kan bara användas som egna dagar, så skillnaden går förlorad (se A6).
+- Lägstanivå som dubbeldag först efter 180 sjukpenningdagar (täcks av ordningskontrollen i A16).
 
 ### A6. Fel budskap om reserverade dagar
-`validateReservedDays` säger att varje förälder "måste ta minst 90 dagar". Det är inget krav, dagarna går förlorade om de inte tas ut. Ändra till exempelvis "Förälder 2 planerar 60 dagar – 30 reserverade dagar går förlorade."
+`validateReservedDays` säger att varje förälder "måste ta minst 90 dagar". Det är inget krav, dagarna går förlorade om de inte tas ut. Ändra till exempelvis "Förälder 2 planerar 60 dagar – 30 reserverade dagar går förlorade." Förlorade dagar är en varning och gör inte planen ogiltig.
+Överföringskontrollen är också fel: den räknar `240 − egna dagar > 150` som ogiltigt, så den som tar 60 dagar "försöker föra över 180". Rätt kontroll är att en förälder får högst 240 egna + 150 överförda = 390 dagar.
 
 ### A7. Fel SGI visas
 `calculateSGI` returnerar inkomst × 0,97 och kallar det SGI. SGI är inkomsten (max 592 000). 0,97 hör hemma i dagersättningsformeln. Dagbeloppen blir nästan samma, men visad och exporterad SGI blir fel: 35 000 kr/mån visas som 407 400 i stället för 420 000.
@@ -101,6 +104,10 @@ Ca 80 kommuner, data från 2025, Sigtuna ligger dubbelt (även under Uppsala lä
 ### A15. Datum blandar UTC och lokal tid
 Datumsträngar som `"2026-03-15"` tolkas av `new Date(...)` som midnatt UTC, medan månadsgränserna i `getMonthlyIncomeForParent` skapas i lokal tid med `new Date(år, månad, 1)`. Datum skrivs sedan tillbaka med `toISOString().split("T")[0]`, som alltid ger UTC-datumet. I svensk tid (UTC+1/+2) kan det flytta datumet en dag bakåt. Till exempel blir förvalt födelsedatum och startdatum i App.tsx och `src/constants/index.tsx` gårdagens datum om sidan öppnas mellan kl. 00 och 02. `getDateAfterDays` kombinerar UTC-tolkning med `setDate` i lokal tid, så samma förskjutning kan uppstå när en period passerar en sommartidsövergång. Även `periodHelpers.ts` och exportens datumstämpel använder `toISOString()`.
 Åtgärd: hantera datum som rena kalenderdatum utan tidszon, t.ex. med en liten hjälpmodul som tolkar och formaterar `ÅÅÅÅ-MM-DD` i lokal tid (eller räknar i hela dagar), och använd den överallt.
+
+### A16. Lägstanivåregeln kontrolleras inte i tidsordning
+`validateLowLevelDaysRule` jämför bara totalsumman av sjukpenningdagar med 180. En plan där lägstanivådagarna ligger först godkänns alltså om totalen räcker.
+Åtgärd: för varje period på lägstanivå, räkna sjukpenningdagar som tagits ut före periodens start (`highLevelDaysBefore`, pågående perioder med andelen före datumet). Färre än 180 gör planen ogiltig. Gäller även lägstanivådagar som tas ut som dubbeldagar (A5).
 
 ---
 

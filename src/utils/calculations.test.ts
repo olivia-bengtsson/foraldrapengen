@@ -421,15 +421,90 @@ describe("validateLevelDays", () => {
 
 describe("validateReservedDays", () => {
   // A6: reserverade dagar är inget krav, de går förlorade om de inte tas ut.
-  test.skip("A6: varningen säger att reserverade dagar går förlorade", () => {
-    const result = validateReservedDays([withDays(240), withDays(60)], 2);
+  test("A6: varningen säger att reserverade dagar går förlorade", () => {
+    const result = validateReservedDays([withDays(240), withDays(60, "2027-02-15")], 2);
 
-    expect(result.warnings.join(" ")).toMatch(/går förlorade/);
-    expect(result.warnings.join(" ")).not.toMatch(/måste/);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/30 reserverade dagar går förlorade/);
+    expect(result.warnings.join(" ")).not.toMatch(/måste|föra över 180/);
+    // Förlorade dagar är inget regelbrott
+    expect(result.isValid).toBe(true);
+  });
+
+  test("90 egna dagar på sjukpenningnivå ger ingen varning", () => {
+    const result = validateReservedDays([withDays(240), withDays(90, "2027-02-15")], 2);
+
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("dagar på lägstanivå räknas inte som reserverade dagar", () => {
+    const parent2 = withPeriods(
+      { start: "2027-02-15", weeks: 9 }, // 45 dagar sjukpenningnivå
+      { start: "2027-04-19", weeks: 9, level: "low" } // 45 dagar lägstanivå
+    );
+    const result = validateReservedDays([withDays(240), parent2], 2);
+
+    expect(result.warnings.join(" ")).toMatch(/45 reserverade dagar går förlorade/);
+  });
+
+  test("390 dagar för en förälder godkänns", () => {
+    const result = validateReservedDays([withDays(390), withDays(90, "2027-09-13")], 2);
+
+    expect(result.isValid).toBe(true);
+  });
+
+  test("391 dagar för en förälder underkänns (högst 240 + 150 överförda)", () => {
+    const parent1 = withPeriods(
+      { weeks: 78 }, // 390 dagar
+      { start: "2027-09-13", weeks: 1, daysPerWeek: 1 }
+    );
+    const result = validateReservedDays([parent1, withDays(89, "2028-01-03")], 2);
+
+    expect(result.isValid).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/391 dagar, men kan få högst 390/);
+  });
+
+  test("ensamförälder har inga reserverade dagar att förlora", () => {
+    expect(validateReservedDays([withDays(240)], 1).warnings).toEqual([]);
   });
 });
 
 describe("validateLowLevelDaysRule", () => {
+  // A16: kontrolleras i tidsordning, inte bara som totalsumma
+  test("A16: lägstanivå före sjukpenningnivå underkänns även om totalen räcker", () => {
+    const parent = withPeriods(
+      { start: "2026-03-16", weeks: 2, level: "low" },
+      { start: "2026-03-30", weeks: 40 } // 200 dagar
+    );
+
+    expect(validateLowLevelDaysRule([parent], 1).isValid).toBe(false);
+  });
+
+  test("A16: lägstanivå under förälder 1:s period räknas med andelen före", () => {
+    const parent1 = withPeriods({ start: "2026-03-16", weeks: 40 }); // 200 dagar
+    // Vecka 30: 200 × 210/280 = 150 dagar före. Vecka 36: 180 dagar före.
+    const early = withPeriods({ start: "2026-10-12", weeks: 2, level: "low" });
+    const onTime = withPeriods({ start: "2026-11-23", weeks: 2, level: "low" });
+
+    expect(validateLowLevelDaysRule([parent1, early], 2).isValid).toBe(false);
+    expect(validateLowLevelDaysRule([parent1, onTime], 2).isValid).toBe(true);
+  });
+
+  test("A5: lägstanivå som dubbeldag före 180 sjukpenningdagar underkänns", () => {
+    const low: Partial<ParentalPeriod> = { start: "2026-03-16", weeks: 2, level: "low" };
+
+    expect(validateLowLevelDaysRule([withPeriods(low), withPeriods(low)], 2).isValid).toBe(
+      false
+    );
+  });
+
+  test("A5: lägstanivå som dubbeldag efter 180 sjukpenningdagar godkänns", () => {
+    const low: Partial<ParentalPeriod> = { start: "2026-11-23", weeks: 2, level: "low" };
+    const parent1 = withPeriods({ start: "2026-03-16", weeks: 36 }, low); // 180 dagar först
+
+    expect(validateLowLevelDaysRule([parent1, withPeriods(low)], 2).isValid).toBe(true);
+  });
+
   const lowPeriod: Partial<ParentalPeriod> = {
     start: "2027-03-01",
     weeks: 2,
@@ -504,9 +579,10 @@ describe("validateDoubleDays", () => {
   });
 
   // 15 månader från 31 januari är 30 april (månadens sista dag)
-  test("dubbeldagar dagen före 15-månadersdagen godkänns", () => {
+  test("dubbeldagar som slutar dagen före 15-månadersdagen godkänns", () => {
+    // 23–29 april
     const result = validateDoubleDays(
-      together({ start: "2027-04-29", weeks: 1, daysPerWeek: 1 }),
+      together({ start: "2027-04-23", weeks: 1, daysPerWeek: 1 }),
       2,
       "2026-01-31"
     );
@@ -525,8 +601,9 @@ describe("validateDoubleDays", () => {
     expect(result.warnings.join(" ")).toMatch(/2027-04-30/);
   });
 
-  // A5: varje överlappande dag ska vara före 15-månadersdagen, inte bara överlappets start.
-  test.skip("A5: överlapp som slutar efter 15 månaders ålder underkänns", () => {
+  // A5: varje dubbeldag ska vara före 15-månadersdagen, inte bara överlappets start.
+  test("A5: överlapp som slutar efter 15 månaders ålder underkänns", () => {
+    // Gräns 2027-04-15. Överlapp 2027-03-15 – 2027-05-16: 32 dagar efter gränsen × 5/7 = 23
     const result = validateDoubleDays(
       together({ start: "2027-03-15", weeks: 9 }),
       2,
@@ -534,16 +611,34 @@ describe("validateDoubleDays", () => {
     );
 
     expect(result.isValid).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/23 dubbeldagar ligger på eller efter/);
   });
 
-  // A5: reserverade dagar får inte användas som dubbeldagar.
-  test.skip("A5: dubbeldagar från de reserverade dagarna underkänns", () => {
-    const shared: Partial<ParentalPeriod> = { start: "2026-08-03", weeks: 6 };
-    const parent1 = withPeriods(shared);
-    const parent2 = withPeriods({ start: "2026-03-16", weeks: 16 }, shared);
+  // A5: dubbeldagar kan inte tas från de reserverade dagarna.
+  test("A5: dubbeldagar som inte ryms utöver de reserverade dagarna underkänns", () => {
+    const shared: Partial<ParentalPeriod> = { start: "2026-03-16", weeks: 6 }; // 30 dubbeldagar
+    // Förälder 1: 30 + 340 = 370 dagar, alltså 130 överförda från förälder 2
+    const parent1 = withPeriods(shared, { start: "2026-04-27", weeks: 68 });
+    // Förälder 2: 30 + 80 = 110 dagar, bara 150 − 130 = 20 dagar utöver de reserverade
+    const parent2 = withPeriods(shared, { start: "2027-09-06", weeks: 16 });
 
-    // Förälder 2 har 80 + 30 = 110 dagar, varav 30 dubbeldagar, men bara 110 − 90 = 20 får vara dubbeldagar
-    expect(validateDoubleDays([parent1, parent2], 2).isValid).toBe(false);
+    const result = validateDoubleDays([parent1, parent2], 2);
+
+    expect(result.isValid).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/30 dubbeldagar, men bara 20 dagar utöver/);
+  });
+
+  test("A5: utan överföring ryms dubbeldagarna, men reserverade dagar går förlorade", () => {
+    const shared: Partial<ParentalPeriod> = { start: "2026-08-03", weeks: 6 };
+    const parent1 = withPeriods(shared, { start: "2026-09-14", weeks: 42 }); // 240 dagar
+    const parent2 = withPeriods({ start: "2026-03-16", weeks: 16 }, shared); // 110 dagar
+
+    expect(validateDoubleDays([parent1, parent2], 2).isValid).toBe(true);
+
+    // 110 − 30 dubbeldagar = 80 egna dagar, 10 reserverade går förlorade
+    const reserved = validateReservedDays([parent1, parent2], 2);
+    expect(reserved.isValid).toBe(true);
+    expect(reserved.warnings.join(" ")).toMatch(/10 reserverade dagar går förlorade/);
   });
 });
 

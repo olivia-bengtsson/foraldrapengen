@@ -1,4 +1,5 @@
-import { ParentalPeriod } from "../types";
+import { Parent, ParentalPeriod } from "../types";
+import { RULES } from "../rules";
 import { addDays, fromDayNumber, toDayNumber, todayDate } from "./dates";
 
 // Helper to generate unique IDs for periods
@@ -30,6 +31,18 @@ export const nextFreeStart = (periods: ParentalPeriod[]): string =>
 export const getTotalDaysFromPeriods = (periods: ParentalPeriod[]): number => {
   return periods.reduce((sum, period) => sum + periodDays(period), 0);
 };
+
+/**
+ * Förbrukade dagar = summan av föräldrarnas dagar. Dubbeldagar ingår redan i båda
+ * föräldrarnas dagar och ska inte räknas en gång till (A4).
+ */
+export const getUsedDays = (parents: Parent[], numParents: 1 | 2): number =>
+  parents
+    .slice(0, numParents)
+    .reduce((sum, p) => sum + getTotalDaysFromPeriods(p.periods), 0);
+
+export const getRemainingDays = (parents: Parent[], numParents: 1 | 2): number =>
+  RULES.days.total - getUsedDays(parents, numParents);
 
 // Get earliest start date from all periods
 export const getEarliestStartDate = (periods: ParentalPeriod[]): string => {
@@ -75,6 +88,8 @@ export const validateNoOverlap = (
 export interface PeriodOverlap {
   start: string;
   end: string;
+  /** Lägsta dagar per vecka av de två perioderna */
+  daysPerWeek: number;
   /** Dubbeldagar: ceil(kalenderdagar × lägsta dagar per vecka / 7) */
   days: number;
 }
@@ -100,6 +115,7 @@ export const getOverlaps = (
         overlaps.push({
           start: fromDayNumber(overlapStart),
           end: fromDayNumber(overlapEnd),
+          daysPerWeek: minDaysPerWeek,
           days: Math.ceil((calendarDays * minDaysPerWeek) / 7),
         });
       }
@@ -107,6 +123,33 @@ export const getOverlaps = (
   }
 
   return overlaps;
+};
+
+/** Dubbeldagar i den del av ett överlapp som ligger på eller efter ett datum. */
+export const overlapDaysFrom = (overlap: PeriodOverlap, date: string): number => {
+  const from = Math.max(toDayNumber(overlap.start), toDayNumber(date));
+  const end = toDayNumber(overlap.end);
+  if (from > end) return 0;
+  return Math.ceil(((end - from + 1) * overlap.daysPerWeek) / 7);
+};
+
+/**
+ * Antal dagar på sjukpenningnivå som tagits ut före ett datum (A16).
+ * Perioder som pågår vid datumet räknas med den andel som ligger före.
+ */
+export const highLevelDaysBefore = (
+  periods: ParentalPeriod[],
+  date: string
+): number => {
+  const day = toDayNumber(date);
+
+  return periods
+    .filter((period) => period.level === "high")
+    .reduce((sum, period) => {
+      const calendarDays = period.weeks * 7;
+      const before = Math.min(Math.max(day - toDayNumber(period.start), 0), calendarDays);
+      return sum + (periodDays(period) * before) / calendarDays;
+    }, 0);
 };
 
 /** Antal dubbeldagar ur överlappet mellan föräldrarnas perioder. */
