@@ -5,13 +5,14 @@ import { useLanguage } from "../../i18n/LanguageContext";
 import LanguageSwitcher from "../LanguageSwitcher";
 import FeedbackFooter from "../FeedbackFooter";
 import Summary from "../Summary";
-import ValidationWarnings from "../calculator/ValidationWarnings";
 import PlannerLayout from "./PlannerLayout";
 import PlannerTabs from "./PlannerTabs";
 import { plannerUrl } from "./plannerFlag";
 import QuickStart from "./QuickStart";
 import DetailedPlan from "./DetailedPlan";
 import PlanTimeline from "./PlanTimeline";
+import DaysMeters from "./DaysMeters";
+import ThingsToConsider from "./ThingsToConsider";
 import { HighlightProvider, useHighlight } from "./HighlightContext";
 import { useQuickStart } from "./useQuickStart";
 
@@ -101,7 +102,8 @@ const PlannerContent: React.FC<{ plan: Plan }> = ({ plan }) => {
         visualization={
           <>
             <PlanTimeline plan={plan} onSelectPeriod={selectPeriod} />
-            <ValidationWarnings warnings={plan.validation.allWarnings} />
+            <DaysMeters plan={plan} />
+            <ThingsToConsider issues={plan.validation.issues} />
             <Panel>
               <h2 className="text-lg font-semibold text-green-900 mb-3">
                 {t.plannerPlanHeading}

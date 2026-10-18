@@ -59,7 +59,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 12. ✅ Snabbstart med `planGenerator.ts` (ren funktion, testad): `generatePlan`, `answersFromPlan`, förvalen "Dela lika", "Så länge som möjligt" och "Mer pengar per månad". Skydd mot överskrivning via `planSource` i `usePlan`. Kommun via befintliga `MunicipalitySelector`.
 13. ✅ Detaljerad plan: `DetailedPlan`, `ParentPlanCard`, `PeriodRow` med framräknat slutdatum och antal dagar, "Lägg till period" och "Flytta start" (`findPreviousOverlaps`). Förvalen i Snabbstart följer skyddet mot överskrivning.
 14. ✅ Tidslinje med dubbeldagar, luckor, delvis täckta veckor (jobbar övriga dagar) och markeringar vid 1 år och 15 månader. Logik i `src/utils/timeline.ts`, komponenter `PlanTimeline`, `TimelineRow`, `TimelineAxis`. Markering mellan tidslinje och Detaljerad plan via `HighlightContext`.
-15. Mätare för dagar kvar och reserverade dagar.
+15. ✅ Mätare för dagar kvar och reserverade dagar (`DaysMeters`, `Meter`, `ReservedDaysStatus`, siffror från `daysMeters.ts` och `reservedDaysStatus`). Rutan "Att tänka på" (`ThingsToConsider`) visar varningar som mätarna inte visar. Valideringarna returnerar `issues` med kod och allvarlighet (`error`/`info`) bredvid `warnings`.
 16. Hjälpruta som följer fokus.
 17. Inkomstgraf per månad med "tightaste månaden".
 18. Ta bort det som ersätts (stegen 1–4, InfoSidebar/InfoCarousel, DaysSummary). Exempel blir förval i Snabbstart.

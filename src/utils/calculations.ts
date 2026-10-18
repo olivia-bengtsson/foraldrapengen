@@ -263,21 +263,64 @@ export const getMonthlyIncomeForParent = (
 const activePeriods = (parents: Parent[], numParents: 1 | 2): ParentalPeriod[] =>
   parents.slice(0, numParents).flatMap((parent) => parent?.periods ?? []);
 
-/**
- * VALIDERING: Kontrollera totala dagar för båda föräldrar
- */
+export type IssueCode =
+  | "totalDays"
+  | "levelHigh"
+  | "levelLow"
+  | "reservedTransfer"
+  | "reservedLost"
+  | "lowLevelOrder"
+  | "doubleDaysLate"
+  | "doubleDaysReserved"
+  | "doubleDaysMax"
+  | "sgiProtection";
+
+/** En varning med kod, så att gränssnittet kan välja var den visas. */
+export interface Issue {
+  code: IssueCode;
+  message: string;
+  /** error = planen är ogiltig, info = påverkar inte giltigheten */
+  severity: "error" | "info";
+}
+
 export interface DaysValidation {
   isValid: boolean;
   totalDays: number;
   exceededDays: number;
+  /** Samma texter som issues, för den gamla vyn */
   warnings: string[];
+  issues: Issue[];
 }
 
+/** Samlar varningar för en validering. */
+const issueList = () => {
+  const issues: Issue[] = [];
+  return {
+    issues,
+    add: (code: IssueCode, severity: Issue["severity"], message: string) =>
+      issues.push({ code, severity, message }),
+  };
+};
+
+const validation = (
+  issues: Issue[],
+  values: { isValid: boolean; totalDays: number; exceededDays: number }
+): DaysValidation => ({ ...values, warnings: issues.map((i) => i.message), issues });
+
+const EMPTY_VALIDATION: DaysValidation = validation([], {
+  isValid: true,
+  totalDays: 0,
+  exceededDays: 0,
+});
+
+/**
+ * VALIDERING: Kontrollera totala dagar för båda föräldrar
+ */
 export const validateTotalDays = (
   parents: Parent[],
   numParents: 1 | 2
 ): DaysValidation => {
-  const warnings: string[] = [];
+  const { issues, add } = issueList();
 
   const parent1Days = getTotalDaysFromPeriods(parents[0]?.periods || []);
   const parent2Days =
@@ -287,18 +330,15 @@ export const validateTotalDays = (
   const exceededDays = Math.max(0, totalDays - DAYS.total);
 
   if (exceededDays > 0) {
-    warnings.push(
+    add(
+      "totalDays",
+      "error",
       `Totalt antal dagar (${totalDays}) överstiger maxgränsen på ${DAYS.total} dagar. ` +
         `Du planerar ${exceededDays} dagar för mycket.`
     );
   }
 
-  return {
-    isValid: exceededDays === 0,
-    totalDays,
-    exceededDays,
-    warnings,
-  };
+  return validation(issues, { isValid: exceededDays === 0, totalDays, exceededDays });
 };
 
 /**
@@ -309,7 +349,7 @@ export const validateLevelDays = (
   parents: Parent[],
   numParents: 1 | 2
 ): DaysValidation => {
-  const warnings: string[] = [];
+  const { issues, add } = issueList();
   const { high: highLevelDays, low: lowLevelDays } = daysByLevel(
     activePeriods(parents, numParents)
   );
@@ -318,25 +358,28 @@ export const validateLevelDays = (
   const exceededLow = Math.max(0, lowLevelDays - DAYS.lowLevelTotal);
 
   if (exceededHigh > 0) {
-    warnings.push(
+    add(
+      "levelHigh",
+      "error",
       `Ni planerar ${highLevelDays} dagar på sjukpenningnivå, men det finns ${DAYS.highLevelTotal}. ` +
         `Gör om ${exceededHigh} dagar till lägstanivå eller korta ledigheten.`
     );
   }
 
   if (exceededLow > 0) {
-    warnings.push(
+    add(
+      "levelLow",
+      "error",
       `Ni planerar ${lowLevelDays} dagar på lägstanivå, men det finns ${DAYS.lowLevelTotal}. ` +
         `Korta ledigheten på lägstanivå med ${exceededLow} dagar.`
     );
   }
 
-  return {
-    isValid: warnings.length === 0,
+  return validation(issues, {
+    isValid: issues.length === 0,
     totalDays: highLevelDays + lowLevelDays,
     exceededDays: exceededHigh + exceededLow,
-    warnings,
-  };
+  });
 };
 
 
@@ -346,54 +389,86 @@ export const validateLevelDays = (
  *   De kan bara användas som egna dagar på sjukpenningnivå, inte som dubbeldagar.
  * - En förälder kan få högst 240 egna + 150 överförda dagar. Fler gör planen ogiltig.
  */
-export const validateReservedDays = (
+export interface ReservedDaysStatus {
+  parentId: number;
+  name: string;
+  ownDays: number;
+  doubleDays: number;
+  /** Reserverade dagar som inte används och går förlorade */
+  lost: number;
+  /** Dagar över 240 egna + 150 överförda */
+  exceeded: number;
+}
+
+/** Reserverade dagar och överföring per förälder (bara vid två föräldrar). */
+export const reservedDaysStatus = (
   parents: Parent[],
   numParents: 1 | 2
-): DaysValidation => {
-  if (numParents === 1) {
-    return { isValid: true, totalDays: 0, exceededDays: 0, warnings: [] };
-  }
+): ReservedDaysStatus[] => {
+  if (numParents === 1) return [];
 
-  const warnings: string[] = [];
-  let exceededDays = 0;
   const doubleDays = calculateDoubleDays(parents[0].periods, parents[1].periods);
   const maxPerParent = DAYS.perParent + DAYS.transferablePerParent;
 
-  parents.slice(0, 2).forEach((parent, i) => {
-    const other = parents[1 - i];
+  return parents.slice(0, 2).map((parent) => {
     const ownDays = getTotalDaysFromPeriods(parent.periods);
-
-    if (ownDays > maxPerParent) {
-      exceededDays += ownDays - maxPerParent;
-      warnings.push(
-        `${parent.name} planerar ${ownDays} dagar, men kan få högst ${maxPerParent} ` +
-          `(${DAYS.perParent} egna + ${DAYS.transferablePerParent} överförda från ${other.name}).`
-      );
-    }
-
     const reservedUsed = Math.min(
       DAYS.reservedPerParent,
       Math.max(0, daysByLevel(parent.periods).high - doubleDays)
     );
-    const lost = DAYS.reservedPerParent - reservedUsed;
+    return {
+      parentId: parent.id,
+      name: parent.name,
+      ownDays,
+      doubleDays,
+      lost: DAYS.reservedPerParent - reservedUsed,
+      exceeded: Math.max(0, ownDays - maxPerParent),
+    };
+  });
+};
 
-    if (lost > 0) {
-      warnings.push(
-        doubleDays > 0
-          ? `${parent.name} planerar ${ownDays} dagar, varav ${doubleDays} dubbeldagar. ` +
-              `${lost} reserverade dagar går förlorade, eftersom de inte kan föras över eller tas ut som dubbeldagar.`
-          : `${parent.name} planerar ${ownDays} dagar. ` +
-              `${lost} reserverade dagar går förlorade, eftersom de inte kan föras över.`
+export const validateReservedDays = (
+  parents: Parent[],
+  numParents: 1 | 2
+): DaysValidation => {
+  if (numParents === 1) return EMPTY_VALIDATION;
+
+  const { issues, add } = issueList();
+  const maxPerParent = DAYS.perParent + DAYS.transferablePerParent;
+  const statuses = reservedDaysStatus(parents, numParents);
+
+  statuses.forEach((status, i) => {
+    const other = parents[1 - i];
+
+    if (status.exceeded > 0) {
+      add(
+        "reservedTransfer",
+        "error",
+        `${status.name} planerar ${status.ownDays} dagar, men kan få högst ${maxPerParent} ` +
+          `(${DAYS.perParent} egna + ${DAYS.transferablePerParent} överförda från ${other.name}).`
+      );
+    }
+
+    if (status.lost > 0) {
+      add(
+        "reservedLost",
+        "info",
+        status.doubleDays > 0
+          ? `${status.name} planerar ${status.ownDays} dagar, varav ${status.doubleDays} dubbeldagar. ` +
+              `${status.lost} reserverade dagar går förlorade, eftersom de inte kan föras över eller tas ut som dubbeldagar.`
+          : `${status.name} planerar ${status.ownDays} dagar. ` +
+              `${status.lost} reserverade dagar går förlorade, eftersom de inte kan föras över.`
       );
     }
   });
 
-  return {
+  const exceededDays = statuses.reduce((sum, s) => sum + s.exceeded, 0);
+
+  return validation(issues, {
     isValid: exceededDays === 0,
     totalDays: getTotalDaysFromPeriods(activePeriods(parents, 2)),
     exceededDays,
-    warnings,
-  };
+  });
 };
 
 /**
@@ -405,7 +480,7 @@ export const validateLowLevelDaysRule = (
   parents: Parent[],
   numParents: 1 | 2
 ): DaysValidation => {
-  const warnings: string[] = [];
+  const { issues, add } = issueList();
   const periods = activePeriods(parents, numParents);
 
   const lowPeriods = periods
@@ -416,7 +491,9 @@ export const validateLowLevelDaysRule = (
     const highBefore = highLevelDaysBefore(periods, period.start);
 
     if (highBefore < DAYS.highLevelBeforeLowLevel) {
-      warnings.push(
+      add(
+        "lowLevelOrder",
+        "error",
         `⚠️ Lägstanivådagarna från ${period.start} kan tas ut först när ${DAYS.highLevelBeforeLowLevel} dagar ` +
           `på sjukpenningnivå har använts för barnet. Fram till dess har ni tagit ut ${Math.floor(highBefore)}.`
       );
@@ -425,12 +502,11 @@ export const validateLowLevelDaysRule = (
     }
   }
 
-  return {
-    isValid: warnings.length === 0,
+  return validation(issues, {
+    isValid: issues.length === 0,
     totalDays: daysByLevel(periods).high,
     exceededDays: 0,
-    warnings,
-  };
+  });
 };
 
 /**
@@ -445,11 +521,9 @@ export const validateDoubleDays = (
   numParents: 1 | 2,
   childBirthDate?: string
 ): DaysValidation => {
-  const warnings: string[] = [];
+  if (numParents !== 2) return EMPTY_VALIDATION;
 
-  if (numParents !== 2) {
-    return { isValid: true, totalDays: 0, exceededDays: 0, warnings: [] };
-  }
+  const { issues, add } = issueList();
 
   const overlaps = getOverlaps(parents[0]?.periods ?? [], parents[1]?.periods ?? []);
   const doubleDays = overlaps.reduce((sum, overlap) => sum + overlap.days, 0);
@@ -463,7 +537,9 @@ export const validateDoubleDays = (
     );
 
     if (lateDays > 0) {
-      warnings.push(
+      add(
+        "doubleDaysLate",
+        "error",
         `⚠️ ${lateDays} dubbeldagar ligger på eller efter dagen barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader (${limit}). ` +
           `Dubbeldagar kan endast tas ut innan barnet fyller ${DAYS.doubleDaysMaxAgeMonths} månader.`
       );
@@ -476,7 +552,9 @@ export const validateDoubleDays = (
     const available = Math.max(0, DAYS.transferablePerParent - transferredOut);
 
     if (doubleDays > available) {
-      warnings.push(
+      add(
+        "doubleDaysReserved",
+        "error",
         `⚠️ ${parent.name} har ${doubleDays} dubbeldagar, men bara ${available} dagar utöver de reserverade kvar. ` +
           `Dubbeldagar kan inte tas från de reserverade dagarna.`
       );
@@ -486,18 +564,19 @@ export const validateDoubleDays = (
   const exceededDays = Math.max(0, doubleDays - DAYS.maxDoubleDays);
 
   if (exceededDays > 0) {
-    warnings.push(
+    add(
+      "doubleDaysMax",
+      "error",
       `⚠️ Du har planerat ${doubleDays} dubbeldagar, men max ${DAYS.maxDoubleDays} dubbeldagar tillåts. ` +
         `Du har ${exceededDays} för många dubbeldagar.`
     );
   }
 
-  return {
-    isValid: warnings.length === 0,
+  return validation(issues, {
+    isValid: issues.length === 0,
     totalDays: doubleDays,
     exceededDays,
-    warnings,
-  };
+  });
 };
 
 /**
@@ -510,7 +589,7 @@ export const validateSgiProtection = (
   numParents: 1 | 2,
   childBirthDate?: string
 ): DaysValidation => {
-  const warnings: string[] = [];
+  const { issues, add } = issueList();
 
   if (childBirthDate && isValidDate(childBirthDate)) {
     const firstBirthday = toDayNumber(addYears(childBirthDate, 1));
@@ -524,7 +603,9 @@ export const validateSgiProtection = (
       );
 
       if (atRisk) {
-        warnings.push(
+        add(
+          "sgiProtection",
+          "info",
           `${parent.name}: Efter barnets ettårsdag behöver du ta ut föräldrapenning minst ` +
             `${WORK_DAYS_PER_WEEK} hela dagar i veckan om du är helt ledig. ` +
             `Annars förlorar du din SGI, som styr din sjukpenning och föräldrapenning.`
@@ -533,7 +614,7 @@ export const validateSgiProtection = (
     }
   }
 
-  return { isValid: true, totalDays: 0, exceededDays: 0, warnings };
+  return validation(issues, { isValid: true, totalDays: 0, exceededDays: 0 });
 };
 
 /**
@@ -554,6 +635,7 @@ export const validateAllRules = (
     sgiProtection: DaysValidation;
   };
   allWarnings: string[];
+  issues: Issue[];
 } => {
   const totalDays = validateTotalDays(parents, numParents);
   const levelDays = validateLevelDays(parents, numParents);
@@ -562,14 +644,15 @@ export const validateAllRules = (
   const doubleDays = validateDoubleDays(parents, numParents, childBirthDate);
   const sgiProtection = validateSgiProtection(parents, numParents, childBirthDate);
 
-  const allWarnings = [
-    ...totalDays.warnings,
-    ...levelDays.warnings,
-    ...reservedDays.warnings,
-    ...lowLevelDays.warnings,
-    ...doubleDays.warnings,
-    ...sgiProtection.warnings,
+  const issues = [
+    ...totalDays.issues,
+    ...levelDays.issues,
+    ...reservedDays.issues,
+    ...lowLevelDays.issues,
+    ...doubleDays.issues,
+    ...sgiProtection.issues,
   ];
+  const allWarnings = issues.map((issue) => issue.message);
 
   const isValid =
     totalDays.isValid &&
@@ -589,5 +672,6 @@ export const validateAllRules = (
       sgiProtection,
     },
     allWarnings,
+    issues,
   };
 };

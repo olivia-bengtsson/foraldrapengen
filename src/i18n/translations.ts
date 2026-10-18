@@ -196,6 +196,26 @@ export interface Translations {
   tlPartialSummary: string;
   tlNoPeriods: string;
 
+  // Meters
+  mtHeading: string;
+  mtHigh: string;
+  mtLow: string;
+  mtDouble: string;
+  mtOf: string;
+  mtAria: string;
+  mtHighSub: string;
+  mtLowSub: string;
+  mtDoubleSub: string;
+  mtDoubleLate: string;
+  mtOver: string;
+  rsDays: string;
+  rsUsed: string;
+  rsLost: string;
+  rsExceeded: string;
+  tcHeading: string;
+  tcErrors: string;
+  tcInfo: string;
+
   // Footer
   disclaimerText: string;
   privacyFooterText: string;
@@ -431,6 +451,26 @@ export const translations: Record<Language, Translations> = {
     tlPartialSummary: "Delvis täckt i {weeks} veckor (första gången från {date}), när föräldern jobbar övriga dagar.",
     tlNoPeriods: "Lägg till perioder för att se tidslinjen.",
 
+    // Meters
+    mtHeading: "Dagar kvar att planera",
+    mtHigh: "Sjukpenningnivå",
+    mtLow: "Lägstanivå",
+    mtDouble: "Dubbeldagar",
+    mtOf: "kvar av {max}",
+    mtAria: "{label}: {used} av {max} dagar använda",
+    mtHighSub: "ca 80 % av lönen",
+    mtLowSub: "{amount} kr per dag",
+    mtDoubleSub: "före 15 månader",
+    mtDoubleLate: "{days} efter 15 månader",
+    mtOver: "{days} dagar för mycket",
+    rsDays: "{days} dagar",
+    rsUsed: "Reserverade dagar används",
+    rsLost: "{days} reserverade dagar går förlorade",
+    rsExceeded: "{days} dagar fler än en förälder kan få",
+    tcHeading: "Att tänka på",
+    tcErrors: "Behöver ändras",
+    tcInfo: "Bra att veta",
+
     // Footer
     disclaimerText:
       "Beräkningarna är vägledande. Kontakta Försäkringskassan för exakta uppgifter.",
@@ -653,6 +693,26 @@ export const translations: Record<Language, Translations> = {
     tlGapMany: "{count} gaps where no one is at home, the first from {date}.",
     tlPartialSummary: "Partly covered for {weeks} weeks (first from {date}), when the parent works the other days.",
     tlNoPeriods: "Add periods to see the timeline.",
+
+    // Meters
+    mtHeading: "Days left to plan",
+    mtHigh: "Sickness benefit level",
+    mtLow: "Minimum level",
+    mtDouble: "Double days",
+    mtOf: "left of {max}",
+    mtAria: "{label}: {used} of {max} days used",
+    mtHighSub: "about 80% of salary",
+    mtLowSub: "{amount} SEK per day",
+    mtDoubleSub: "before 15 months",
+    mtDoubleLate: "{days} after 15 months",
+    mtOver: "{days} days too many",
+    rsDays: "{days} days",
+    rsUsed: "Reserved days are used",
+    rsLost: "{days} reserved days are lost",
+    rsExceeded: "{days} days more than one parent can get",
+    tcHeading: "Things to consider",
+    tcErrors: "Needs to change",
+    tcInfo: "Good to know",
 
     // Footer
     disclaimerText:

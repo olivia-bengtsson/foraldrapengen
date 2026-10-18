@@ -89,6 +89,7 @@ Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromP
    - Klick på ett block → byt till Detaljerad plan och scrolla till perioden.
    - Blocken ska vara knappar med `aria-label` (tillgänglighet).
 2. **Dagar kvar att planera**: mätare för sjukpenningnivå (x kvar av 390), lägstanivå (x av 90) och dubbeldagar (x av 60, före 15 mån), med färgsegment per förälder. Röd om gränsen överskrids, med text om hur många dagar för mycket. Per förälder: antal dagar och status för reserverade dagar ("Reserverade dagar används" / "X reserverade dagar går förlorade").
+2b. **Att tänka på**: varningar som mätarna och statusen för reserverade dagar inte visar, uppdelade i "Behöver ändras" (planen är ogiltig) och "Bra att veta" (påverkar inte giltigheten, t.ex. SGI efter ettårsdagen). Varningarna har koder (`Issue` i `calculations.ts`), så att gränssnittet väljer var de visas utan att tolka texten.
 3. **Hjälp**: byter text efter vilket fält som har fokus (`data-help` eller en React-kontext). Texterna ligger i translations.ts och följer docs/GRANSKNING-2026.md. Länk till Försäkringskassan.
 4. **Hushållets inkomst per månad efter skatt**: staplade staplar per förälder, streckad linje för "om ni båda jobbar", y-axel i tkr. Under grafen: "Tightast blir {månad}: X kr, alltså Y kr mindre än vanligt." Rita den med egen SVG. Fråga innan ett diagrambibliotek läggs till.
 5. **Exportknapparna** (kopiera / ladda ner) ligger under grafen.

@@ -20,6 +20,7 @@ import {
   validateDoubleDays,
   validateLevelDays,
   validateLowLevelDaysRule,
+  reservedDaysStatus,
   validateReservedDays,
   validateSgiProtection,
   validateTotalDays,
@@ -863,5 +864,81 @@ describe("validateAllRules", () => {
     const result = validateAllRules([withDays(240), withDays(240, "2027-02-15")], 2);
 
     expect(result.isValid).toBe(false);
+  });
+});
+
+describe("issues", () => {
+  test("koder och allvarlighet följer varningarna", () => {
+    // Förälder 1: 391 dagar på sjukpenningnivå. Förälder 2: 60 dagar.
+    const parent1 = withPeriods(
+      { weeks: 78 },
+      { start: "2027-09-13", weeks: 1, daysPerWeek: 1 }
+    );
+    const parent2 = withDays(60, "2028-01-03");
+    // Utan födelsedatum: perioden med 1 dag/vecka skulle annars också ge SGI-varningen
+    const result = validateAllRules([parent1, parent2], 2);
+
+    expect(result.issues.map((i) => [i.code, i.severity])).toEqual([
+      ["levelHigh", "error"],
+      ["reservedTransfer", "error"],
+      ["reservedLost", "info"],
+    ]);
+    expect(result.allWarnings).toEqual(result.issues.map((i) => i.message));
+  });
+
+  test("SGI-varningen är info, dubbeldagar utöver de reserverade är error", () => {
+    const sgi = validateSgiProtection(
+      [withPeriods({ start: "2027-02-01", weeks: 4, daysPerWeek: 3 })],
+      1,
+      "2026-01-15"
+    );
+    expect(sgi.issues).toEqual([expect.objectContaining({ code: "sgiProtection", severity: "info" })]);
+
+    const shared: Partial<ParentalPeriod> = { start: "2026-03-16", weeks: 6 };
+    const double = validateDoubleDays(
+      [withPeriods(shared, { start: "2026-04-27", weeks: 68 }), withPeriods(shared, { start: "2027-09-06", weeks: 16 })],
+      2
+    );
+    expect(double.issues.map((i) => i.code)).toEqual(["doubleDaysReserved"]);
+  });
+
+  test("lägstanivå före 180 dagar och dubbeldagar efter 15 månader", () => {
+    const low = validateLowLevelDaysRule(
+      [withPeriods({ start: "2026-03-16", weeks: 2, level: "low" })],
+      1
+    );
+    expect(low.issues[0]).toMatchObject({ code: "lowLevelOrder", severity: "error" });
+
+    const late = validateDoubleDays(
+      [withPeriods({ start: "2027-06-14", weeks: 4 }), withPeriods({ start: "2027-06-14", weeks: 4 })],
+      2,
+      "2026-01-15"
+    );
+    expect(late.issues[0]).toMatchObject({ code: "doubleDaysLate", severity: "error" });
+  });
+});
+
+describe("reservedDaysStatus", () => {
+  test("förlorade dagar, dubbeldagar och för många dagar per förälder", () => {
+    const shared: Partial<ParentalPeriod> = { start: "2026-08-03", weeks: 6 }; // 30 dubbeldagar
+    const parent1 = withPeriods(shared, { start: "2026-09-14", weeks: 42 }); // 240
+    const parent2 = withPeriods({ start: "2026-03-16", weeks: 16 }, shared); // 110
+
+    expect(reservedDaysStatus([parent1, parent2], 2)).toEqual([
+      expect.objectContaining({ ownDays: 240, doubleDays: 30, lost: 0, exceeded: 0 }),
+      expect.objectContaining({ ownDays: 110, doubleDays: 30, lost: 10, exceeded: 0 }),
+    ]);
+  });
+
+  test("391 dagar för en förälder", () => {
+    const parent1 = withPeriods({ weeks: 78 }, { start: "2027-09-13", weeks: 1, daysPerWeek: 1 });
+    const status = reservedDaysStatus([parent1, withDays(89, "2028-01-03")], 2);
+
+    expect(status[0].exceeded).toBe(1);
+    expect(status[1].lost).toBe(1);
+  });
+
+  test("ensamförälder", () => {
+    expect(reservedDaysStatus([withDays(240)], 1)).toEqual([]);
   });
 });
