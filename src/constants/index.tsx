@@ -3,7 +3,7 @@
 import { Parent, ParentalPeriod } from "../types";
 import { generatePeriodId } from "../utils/periodHelpers";
 import { addDays, todayDate } from "../utils/dates";
-import { RULES } from "../rules";
+import { DEFAULT_TOP_UP } from "../rules";
 
 // Försäkringskassan länkar
 export { FK_LINKS } from "./FkLinks";
@@ -29,12 +29,7 @@ const period = (
   worksOtherDays: false,
 });
 
-/** Föräldralön från arbetsgivaren med vanliga avtalsvillkor (A9) */
-export const DEFAULT_TOP_UP = {
-  topUpUnderCeilingPercent: Math.round(RULES.employerTopUp.underCeilingRate * 100),
-  topUpOverCeilingPercent: Math.round(RULES.employerTopUp.overCeilingRate * 100),
-  topUpDays: RULES.employerTopUp.typicalDays,
-};
+export { DEFAULT_TOP_UP };
 
 /**
  * Startläget: varje förälder tar sina 195 dagar på sjukpenningnivå (39 veckor) följt av

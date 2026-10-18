@@ -46,12 +46,16 @@ Frågor i den här ordningen. Svaren genererar planen live:
 3. Vem är hemma först? (bara 2 föräldrar)
 4. Hur länge är var och en hemma? Reglage i månader, 0–16 (0–18 för en förälder), med "X mån · Y dagar" bredvid
 5. Dagar per vecka (5 / 6 / 7), med hjälptexten "5 dagar = helt ledig, helgerna sparas"
-6. Hemma tillsammans i början? (Nej / 2 / 4 / 8 veckor, bara 2 föräldrar)
+6. Hemma tillsammans i början? (Nej / 2 / 4 / 8 veckor, bara 2 föräldrar). Hjälptext: "Den som inte födde barnet har dessutom 10 dagar i samband med födseln. De är en egen ersättning och tas inte från de 480 dagarna."
 7. Lön per månad före skatt per förälder
 8. Föräldralön från arbetsgivaren (kryssruta per förälder)
 9. Kommun (för skatten, från Fas 3)
 
 Knappen "Finjustera perioderna →" byter till Detaljerad plan.
+
+**Förval** överst: "Dela lika" (9 + 9 mån, 5 d/v, 2 veckor tillsammans), "Så länge som möjligt" (11 + 11 mån, 5 d/v, alla 480 dagar) och "Mer pengar per månad" (6 + 6 mån, 7 d/v). Ett förval är ett aktivt val och skriver över planen direkt. Förvalen ersätter exempelfliken.
+
+Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromPlan`). Planen ändras först när ett svar ändras. Lön och föräldralön uppdaterar bara föräldern, inte perioderna.
 
 **Generering** (ren funktion i `src/utils/`, med tester):
 - Tillsammans-perioden läggs på föräldern som börjar *sedan*, från födseln, 5 dagar/vecka.
@@ -59,7 +63,8 @@ Knappen "Finjustera perioderna →" byter till Detaljerad plan.
 - Dagar fördelas kronologiskt: först sjukpenningnivå, sedan lägstanivå. Perioden delas i två när nivån byter.
 - Spara alltid upp till 90 sjukpenningdagar åt den andra föräldern (reserverade dagar).
 - Dagar som inte ryms i 390/90 läggs ändå in, så att mätarna visar att planen är för lång.
-- Ändras något i Snabbstart efter att användaren redigerat i Detaljerad plan: visa en tydlig rad om att förslaget skriver över ändringarna. Använd inte `confirm()`.
+- Ändras något i Snabbstart efter att användaren redigerat i Detaljerad plan: visa en tydlig rad om att förslaget skriver över ändringarna. Använd inte `confirm()`. I koden: `planSource` i `usePlan` är `"manual"` efter periodändringar; då sparas svaren och raden "Använd förslaget" visas i stället för att planen genereras om.
+- Den andra föräldern börjar aldrig under sin egen tillsammans-period (om den första är hemma kortare än tillsammans-tiden).
 
 ## Detaljerad plan
 - Ett kort per förälder med redigerbart namn och föräldrapenningnivå. Lön och föräldralön kan visas här också.

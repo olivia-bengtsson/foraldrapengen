@@ -9,6 +9,8 @@ import ValidationWarnings from "../calculator/ValidationWarnings";
 import PlannerLayout from "./PlannerLayout";
 import PlannerTabs from "./PlannerTabs";
 import { plannerUrl } from "./plannerFlag";
+import QuickStart from "./QuickStart";
+import { useQuickStart } from "./useQuickStart";
 
 type PlannerTabId = "quick" | "detailed";
 
@@ -20,6 +22,7 @@ const Panel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const Planner: React.FC<{ plan: Plan }> = ({ plan }) => {
   const { t } = useLanguage();
   const [tab, setTab] = useState<PlannerTabId>("quick");
+  const quickStart = useQuickStart(plan);
 
   const totalAfterTax = plan.parentResults.reduce((sum, r) => sum + r.totalBenefitAfterTax, 0);
   const totalBeforeTax = plan.parentResults.reduce((sum, r) => sum + r.totalBenefitBeforeTax, 0);
@@ -53,9 +56,17 @@ const Planner: React.FC<{ plan: Plan }> = ({ plan }) => {
             active={tab}
             onChange={setTab}
           >
-            <Panel>
-              <p className="text-sm text-gray-600">{t.plannerComingSoon}</p>
-            </Panel>
+            {tab === "quick" ? (
+              <QuickStart
+                plan={plan}
+                quickStart={quickStart}
+                onFineTune={() => setTab("detailed")}
+              />
+            ) : (
+              <Panel>
+                <p className="text-sm text-gray-600">{t.plannerComingSoon}</p>
+              </Panel>
+            )}
           </PlannerTabs>
         }
         visualization={

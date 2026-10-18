@@ -10,6 +10,12 @@ import { calculateDoubleDays, generatePeriodId, nextFreeStart } from "../utils/p
 import { todayDate } from "../utils/dates";
 import { buildMonthlyData } from "../utils/monthlyData";
 
+/**
+ * Var periodernas nuvarande form kommer ifrån. "manual" = ändrade i Detaljerad plan,
+ * i den gamla vyn eller via ett exempel. Snabbstart skriver då inte över utan att fråga.
+ */
+export type PlanSource = "initial" | "quickstart" | "manual";
+
 export interface Plan {
   numParents: 1 | 2;
   birthDate: string;
@@ -17,6 +23,7 @@ export interface Plan {
   municipality: string;
   taxRate: number;
   isChurchMember: boolean;
+  planSource: PlanSource;
 
   parentResults: ParentBenefits[];
   monthlyData: MonthlyData[];
@@ -38,6 +45,8 @@ export interface Plan {
   addPeriod: (parentId: number) => void;
   deletePeriod: (parentId: number, periodId: string) => void;
   loadExample: (key: ExampleKey) => void;
+  /** Ersätter planen med ett förslag från Snabbstart */
+  applyQuickStart: (numParents: 1 | 2, birthDate: string, parents: Parent[]) => void;
 }
 
 export const usePlan = (): Plan => {
@@ -48,6 +57,7 @@ export const usePlan = (): Plan => {
   const [municipality, setMunicipalityName] = useState("");
   const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
   const [isChurchMember, setIsChurchMember] = useState(false);
+  const [planSource, setPlanSource] = useState<PlanSource>("initial");
 
   const parentResults = useMemo(
     () => parents.slice(0, numParents).map((parent) => calculateParentBenefits(parent, taxRate)),
@@ -72,6 +82,12 @@ export const usePlan = (): Plan => {
   const mapParent = (id: number, change: (parent: Parent) => Parent) =>
     setParents((prev) => prev.map((p) => (p.id === id ? change(p) : p)));
 
+  // Ändringar av perioderna (inte lön, namn eller föräldralön)
+  const mapPeriods = (id: number, change: (parent: Parent) => Parent) => {
+    setPlanSource("manual");
+    mapParent(id, change);
+  };
+
   return {
     numParents,
     birthDate,
@@ -79,6 +95,7 @@ export const usePlan = (): Plan => {
     municipality,
     taxRate,
     isChurchMember,
+    planSource,
     parentResults,
     monthlyData,
     doubleDays,
@@ -91,17 +108,20 @@ export const usePlan = (): Plan => {
       setTaxRate(rate);
     },
     setIsChurchMember,
-    setParents,
+    setParents: (next) => {
+      setPlanSource("manual");
+      setParents(next);
+    },
     updateParent: (id, field, value) => mapParent(id, (p) => ({ ...p, [field]: value })),
     updatePeriod: (parentId, periodId, field, value) =>
-      mapParent(parentId, (p) => ({
+      mapPeriods(parentId, (p) => ({
         ...p,
         periods: p.periods.map((period) =>
           period.id === periodId ? { ...period, [field]: value } : period
         ),
       })),
     addPeriod: (parentId) =>
-      mapParent(parentId, (p) => ({
+      mapPeriods(parentId, (p) => ({
         ...p,
         periods: [
           ...p.periods,
@@ -116,7 +136,7 @@ export const usePlan = (): Plan => {
         ],
       })),
     deletePeriod: (parentId, periodId) =>
-      mapParent(parentId, (p) =>
+      mapPeriods(parentId, (p) =>
         p.periods.length === 1
           ? p
           : { ...p, periods: p.periods.filter((period) => period.id !== periodId) }
@@ -125,6 +145,13 @@ export const usePlan = (): Plan => {
       const example = EXAMPLES[key];
       setNumParents(example.parents.length as 1 | 2);
       setParents(example.parents);
+      setPlanSource("manual");
+    },
+    applyQuickStart: (nextNumParents, nextBirthDate, nextParents) => {
+      setNumParents(nextNumParents);
+      setBirthDate(nextBirthDate);
+      setParents(nextParents);
+      setPlanSource("quickstart");
     },
   };
 };

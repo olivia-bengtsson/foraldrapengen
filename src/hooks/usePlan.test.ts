@@ -68,4 +68,26 @@ describe("usePlan", () => {
     expect(result.current.numParents).toBe(1);
     expect(result.current.parentResults).toHaveLength(1);
   });
+
+  test("planSource: manual vid periodändringar, quickstart vid förslag, oförändrad vid lön", () => {
+    const { result } = renderHook(() => usePlan());
+    const parent = result.current.parents[0];
+    expect(result.current.planSource).toBe("initial");
+
+    act(() => result.current.updateParent(parent.id, "monthlySalary", 40000));
+    expect(result.current.planSource).toBe("initial");
+
+    act(() => result.current.updatePeriod(parent.id, parent.periods[0].id, "weeks", 10));
+    expect(result.current.planSource).toBe("manual");
+
+    act(() =>
+      result.current.applyQuickStart(1, "2026-05-01", result.current.parents)
+    );
+    expect(result.current.planSource).toBe("quickstart");
+    expect(result.current.numParents).toBe(1);
+    expect(result.current.birthDate).toBe("2026-05-01");
+
+    act(() => result.current.loadExample("maxTime"));
+    expect(result.current.planSource).toBe("manual");
+  });
 });

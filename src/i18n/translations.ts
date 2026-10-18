@@ -127,6 +127,32 @@ export interface Translations {
   plannerComingSoon: string;
   plannerPlanHeading: string;
 
+  // Quick start
+  qsPresetsLabel: string;
+  qsPresetEqual: string;
+  qsPresetLongest: string;
+  qsPresetMoreMoney: string;
+  qsNumParents: string;
+  qsOneParent: string;
+  qsTwoParents: string;
+  qsBirthDate: string;
+  qsFirst: string;
+  qsMonths: string;
+  qsMonthsValue: string;
+  qsMonthsNone: string;
+  qsDaysPerWeek: string;
+  qsDaysOption: string;
+  qsDaysPerWeekHint: string;
+  qsTogether: string;
+  qsTogetherNo: string;
+  qsTogetherWeeks: string;
+  qsTogetherHint: string;
+  qsSalary: string;
+  qsTopUp: string;
+  qsOverwriteNotice: string;
+  qsOverwriteApply: string;
+  qsToDetailed: string;
+
   // Footer
   disclaimerText: string;
   privacyFooterText: string;
@@ -293,6 +319,32 @@ export const translations: Record<Language, Translations> = {
     plannerComingSoon: "Den här delen byggs i nästa steg.",
     plannerPlanHeading: "Er plan",
 
+    // Quick start
+    qsPresetsLabel: "Snabbval",
+    qsPresetEqual: "Dela lika",
+    qsPresetLongest: "Så länge som möjligt",
+    qsPresetMoreMoney: "Mer pengar per månad",
+    qsNumParents: "Hur många föräldrar delar på dagarna?",
+    qsOneParent: "1 förälder",
+    qsTwoParents: "2 föräldrar",
+    qsBirthDate: "När är barnet fött eller beräknat?",
+    qsFirst: "Vem är hemma först?",
+    qsMonths: "Hur länge vill ni vara hemma?",
+    qsMonthsValue: "{months} mån · {days} dagar",
+    qsMonthsNone: "inte hemma",
+    qsDaysPerWeek: "Hur många dagar i veckan tar ni ut?",
+    qsDaysOption: "{days} dagar",
+    qsDaysPerWeekHint: "5 dagar = helt ledig, helgerna sparas.",
+    qsTogether: "Vill ni vara hemma tillsammans i början?",
+    qsTogetherNo: "Nej",
+    qsTogetherWeeks: "{weeks} veckor",
+    qsTogetherHint: "Den som inte födde barnet har dessutom 10 dagar i samband med födseln. De är en egen ersättning och tas inte från de 480 dagarna.",
+    qsSalary: "Lön per månad före skatt",
+    qsTopUp: "{name} får föräldralön från arbetsgivaren (kollektivavtal)",
+    qsOverwriteNotice: "Du har ändrat perioderna i Detaljerad plan. Förslaget från Snabbstart skriver över dem.",
+    qsOverwriteApply: "Använd förslaget",
+    qsToDetailed: "Finjustera perioderna →",
+
     // Footer
     disclaimerText:
       "Beräkningarna är vägledande. Kontakta Försäkringskassan för exakta uppgifter.",
@@ -446,6 +498,32 @@ export const translations: Record<Language, Translations> = {
     plannerTabDetailed: "Detailed plan",
     plannerComingSoon: "This part is built in the next step.",
     plannerPlanHeading: "Your plan",
+
+    // Quick start
+    qsPresetsLabel: "Quick choices",
+    qsPresetEqual: "Share equally",
+    qsPresetLongest: "As long as possible",
+    qsPresetMoreMoney: "More money per month",
+    qsNumParents: "How many parents share the days?",
+    qsOneParent: "1 parent",
+    qsTwoParents: "2 parents",
+    qsBirthDate: "When is the child born or due?",
+    qsFirst: "Who is at home first?",
+    qsMonths: "How long do you want to be at home?",
+    qsMonthsValue: "{months} mo · {days} days",
+    qsMonthsNone: "not at home",
+    qsDaysPerWeek: "How many days a week do you take?",
+    qsDaysOption: "{days} days",
+    qsDaysPerWeekHint: "5 days = fully off, weekends are saved.",
+    qsTogether: "Do you want to be at home together at the start?",
+    qsTogetherNo: "No",
+    qsTogetherWeeks: "{weeks} weeks",
+    qsTogetherHint: "The parent who did not give birth also gets 10 days in connection with the birth. They are a separate benefit and are not taken from the 480 days.",
+    qsSalary: "Salary per month before tax",
+    qsTopUp: "{name} gets parental pay from the employer (collective agreement)",
+    qsOverwriteNotice: "You have changed the periods in the detailed plan. The quick start suggestion will overwrite them.",
+    qsOverwriteApply: "Use the suggestion",
+    qsToDetailed: "Fine-tune the periods →",
 
     // Footer
     disclaimerText:

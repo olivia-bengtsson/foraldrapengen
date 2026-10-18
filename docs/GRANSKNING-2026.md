@@ -18,6 +18,7 @@ Kunde inte granskas: filen med `EXAMPLES` och `FK_LINKS` (`src/constants/...`) f
 | Lägstanivå | 180 kr/dag | FK aktuella belopp |
 | Dagar per barn | 480 (390 sjukpenningnivå + 90 lägstanivå) | FK föräldrapenning |
 | Reserverade dagar | 90 per förälder, på sjukpenningnivå, kan inte föras över | FK |
+| 10 dagar vid barns födelse | den som inte födde barnet får 10 dagar per barn, kan tas ut fram till dag 60 efter att barnet kommit hem, ersättning knappt 80 % av inkomsten upp till 7,5 prisbasbelopp. En egen ersättning, tas **inte** från de 480 dagarna | FK 10 dagar |
 | Föra över till annan försäkrad (t.ex. mor/farförälder) | högst 45 dagar per förälder, inte reserverade dagar | FK "Föra över dagar" |
 | Lägstanivådagar | får tas ut först när 180 dagar på sjukpenningnivå har använts för barnet | FK dubbeldagar |
 | Dubbeldagar | högst 60, före 15 månaders ålder, kostar 2 dagar (en per förälder), **inte från de reserverade dagarna**, lägstanivå som dubbeldag först efter 180 sjukpenningdagar, båda samma andel av dagen | FK dubbeldagar |
@@ -149,6 +150,7 @@ InfoModal.tsx och FlashcardModal.tsx (om de inte används), `migrateParentToPeri
 ---
 
 ## Källor
+- Försäkringskassan, 10 dagar vid barns födelse: https://www.forsakringskassan.se/privatperson/foralder/10-dagar-vid-barns-fodelse
 - Försäkringskassan, sjukpenninggrundande inkomst (SGI): https://www.forsakringskassan.se/privatperson/sjukpenninggrundande-inkomst-sgi
 - Försäkringskassan, aktuella belopp: https://www.forsakringskassan.se/privatperson/e-tjanster-blanketter-och-informationsmaterial/aktuella-belopp
 - Försäkringskassan, föräldrapenning: https://www.forsakringskassan.se/privatperson/familj-och-barn/foraldrapenning
