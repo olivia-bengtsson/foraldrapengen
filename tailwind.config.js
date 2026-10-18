@@ -5,6 +5,10 @@ module.exports = {
   content: ["./src/**/*.{ts,tsx}", "./public/index.html"],
   theme: {
     extend: {
+      // Planeraren: två kolumner från 920 px (docs/PLANERARE.md)
+      screens: {
+        planner: "920px",
+      },
       // Samma färger som Tailwind 2 (sajtens gröna är emerald). Övriga färger i Tailwind 3 finns kvar.
       colors: {
         green: colors.emerald,

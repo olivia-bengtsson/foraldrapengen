@@ -1,32 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Baby } from "lucide-react";
-import {
-  Parent,
-  ParentBenefits,
-  MonthlyData,
-  TabType,
-  MonthlyIncomeResult,
-  ParentalPeriod,
-} from "./types";
-import {
-  calculateParentBenefits,
-  getMonthlyIncomeForParent,
-  validateAllRules,
-} from "./utils/calculations";
-import { DEFAULT_TAX_RATE } from "./utils/tax";
-import { EXAMPLES, ExampleKey, createInitialParents } from "./constants";
-import {
-  calculateDoubleDays,
-  generatePeriodId,
-  nextFreeStart,
-  periodEnd,
-} from "./utils/periodHelpers";
-import {
-  dateParts,
-  fromDayNumber,
-  toDayNumber,
-  todayDate,
-} from "./utils/dates";
+import { TabType } from "./types";
+import { ExampleKey } from "./constants";
+import { usePlan } from "./hooks/usePlan";
+import Planner from "./components/planner/Planner";
+import { isPlannerEnabled } from "./components/planner/plannerFlag";
 import Summary from "./components/Summary";
 import MonthlyIncomeTable from "./components/MonthlyIncomeTable";
 import ExamplesTab from "./components/ExamplesTab";
@@ -46,26 +24,43 @@ import ValidationWarnings from "./components/calculator/ValidationWarnings";
 import { useLanguage } from "./i18n/LanguageContext";
 
 const ForaldrapengenCalculator = () => {
+  const plan = usePlan();
+  // Ny planerare bakom flaggan ?planerare tills Fas 3 är klar
+  const [plannerEnabled] = useState(isPlannerEnabled);
+
+  return plannerEnabled ? <Planner plan={plan} /> : <OldCalculator plan={plan} />;
+};
+
+/** Den gamla vyn med de numrerade stegen. Tas bort i Fas 3, punkt 18. */
+const OldCalculator = ({ plan }: { plan: ReturnType<typeof usePlan> }) => {
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>("calculator");
-  const [numParents, setNumParents] = useState<1 | 2>(2);
 
-  // Set birth date to today's date by default
-  const today = todayDate();
-  const [birthDate, setBirthDate] = useState<string>(today);
+  const {
+    numParents,
+    setNumParents,
+    birthDate,
+    setBirthDate,
+    parents,
+    municipality: selectedMunicipality,
+    setMunicipality: handleMunicipalityChange,
+    isChurchMember,
+    setIsChurchMember,
+    parentResults,
+    monthlyData,
+    doubleDays: calculatedDoubleDays,
+    validation,
+    updateParent,
+    updatePeriod,
+    addPeriod,
+    deletePeriod,
+  } = plan;
+  const validationWarnings = validation.allWarnings;
 
   const [selectedInfoCard, setSelectedInfoCard] = useState<string>("sgi");
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // Municipality and tax settings
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
-  const [isChurchMember, setIsChurchMember] = useState<boolean>(false);
-
-  // Validation warnings
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
 
   // Progressive flow state - which sections are open/completed
   const [openSections, setOpenSections] = useState({
@@ -74,18 +69,6 @@ const ForaldrapengenCalculator = () => {
     summary: false, // Sammanfattning
     table: false, // Månadstabell
   });
-
-  const [parents, setParents] = useState<Parent[]>(() =>
-    createInitialParents(today),
-  );
-
-  const handleMunicipalityChange = (
-    municipality: string,
-    newTaxRate: number,
-  ) => {
-    setSelectedMunicipality(municipality);
-    setTaxRate(newTaxRate);
-  };
 
   // Check if user should see onboarding
   useEffect(() => {
@@ -96,12 +79,6 @@ const ForaldrapengenCalculator = () => {
       }, 500);
     }
   }, []);
-
-  // Validate parental leave rules
-  useEffect(() => {
-    const validation = validateAllRules(parents, numParents, birthDate);
-    setValidationWarnings(validation.allWarnings);
-  }, [parents, numParents, birthDate]);
 
   // Toggle functions for manual control
   const toggleSection = (section: keyof typeof openSections) => {
@@ -123,156 +100,9 @@ const ForaldrapengenCalculator = () => {
     }));
   };
 
-  // Beräkna resultat för alla föräldrar (nu med taxRate)
-  const parentResults: ParentBenefits[] = useMemo(() => {
-    return parents
-      .slice(0, numParents)
-      .map((parent) => calculateParentBenefits(parent, taxRate));
-  }, [parents, numParents, taxRate]);
-
-  // Beräkna totala dagar och återstående
-  // Beräkna automatiskt dubbeldagar baserat på överlappande perioder
-  const calculatedDoubleDays = useMemo(() => {
-    if (numParents !== 2) return 0;
-
-    return calculateDoubleDays(parents[0].periods, parents[1].periods);
-  }, [parents, numParents]);
-
-  // Beräkna månadsinkomst
-  const monthlyData = useMemo((): MonthlyData[] => {
-    const allDays = parents
-      .slice(0, numParents)
-      .flatMap((p) =>
-        p.periods.map((period) => [
-          toDayNumber(period.start),
-          toDayNumber(periodEnd(period)),
-        ]),
-      )
-      .flat()
-      .filter((day) => !isNaN(day));
-
-    if (allDays.length === 0) return [];
-
-    const first = dateParts(fromDayNumber(Math.min(...allDays)));
-    const last = dateParts(fromDayNumber(Math.max(...allDays)));
-
-    const months: MonthlyData[] = [];
-
-    for (
-      let index = first.year * 12 + first.month;
-      index <= last.year * 12 + last.month;
-      index++
-    ) {
-      const year = Math.floor(index / 12);
-      const month = index % 12;
-
-      const parent1Result: MonthlyIncomeResult = getMonthlyIncomeForParent(
-        parents[0],
-        parentResults[0],
-        year,
-        month,
-        taxRate,
-      );
-
-      const parent2Result: MonthlyIncomeResult | undefined =
-        numParents === 2
-          ? getMonthlyIncomeForParent(
-              parents[1],
-              parentResults[1],
-              year,
-              month,
-              taxRate,
-            )
-          : undefined;
-
-      months.push({
-        month: `${year}-${String(month + 1).padStart(2, "0")}`,
-        parent1Total: parent1Result.total,
-        parent2Total: parent2Result?.total,
-        parent1Days: parent1Result.days,
-        parent2Days: parent2Result?.days,
-        parent1HighDays: parent1Result.highDays,
-        parent1LowDays: parent1Result.lowDays,
-        parent2HighDays: parent2Result?.highDays,
-        parent2LowDays: parent2Result?.lowDays,
-      });
-
-    }
-
-    return months;
-  }, [parents, numParents, taxRate, parentResults]);
-
-  // Parent update handlers
-  const updateParent = (id: number, field: string, value: any) => {
-    setParents((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
-    );
-  };
-
-  const updatePeriod = (
-    parentId: number,
-    periodId: string,
-    field: string,
-    value: any,
-  ) => {
-    setParents((prev) =>
-      prev.map((parent) => {
-        if (parent.id !== parentId) return parent;
-
-        return {
-          ...parent,
-          periods: parent.periods.map((period) =>
-            period.id === periodId ? { ...period, [field]: value } : period,
-          ),
-        };
-      }),
-    );
-  };
-
-  const addPeriod = (parentId: number) => {
-    setParents((prev) =>
-      prev.map((parent) => {
-        if (parent.id !== parentId) return parent;
-
-        const newPeriod: ParentalPeriod = {
-          id: generatePeriodId(),
-          start: nextFreeStart(parent.periods),
-          weeks: 6,
-          daysPerWeek: 5,
-          level: "high",
-          worksOtherDays: false,
-        };
-
-        return {
-          ...parent,
-          periods: [...parent.periods, newPeriod],
-        };
-      }),
-    );
-  };
-
-  const deletePeriod = (parentId: number, periodId: string) => {
-    setParents((prev) =>
-      prev.map((parent) => {
-        if (parent.id !== parentId) return parent;
-
-        if (parent.periods.length === 1) {
-          return parent;
-        }
-
-        return {
-          ...parent,
-          periods: parent.periods.filter((p) => p.id !== periodId),
-        };
-      }),
-    );
-  };
-
   // Load example
   const loadExample = (exampleKey: ExampleKey) => {
-    const example = EXAMPLES[exampleKey];
-    setNumParents(example.parents.length as 1 | 2);
-    setParents(example.parents);
+    plan.loadExample(exampleKey);
     setActiveTab("calculator");
   };
 

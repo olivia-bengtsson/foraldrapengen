@@ -5,11 +5,29 @@ Den här filen beskriver det nya planeringsflödet. Den klickbara skissen ligger
 ## Varför
 Dagens formulär kräver att man redan kan reglerna. Man väljer exakta datum, räknar dagar själv och ser fel först när något blir rött. Förstagångsföräldrar tänker i stället "jag är hemma första halvåret, sen tar du över". Planeraren ska översätta det till dagar, datum och pengar och visa resultatet direkt.
 
+## Ändringar sedan specen skrevs
+Specen är uppdaterad på de här punkterna. Där den och koden skiljer sig gäller koden och docs/GRANSKNING-2026.md.
+
+| Område | Först i specen | Nu |
+|---|---|---|
+| Längd i Detaljerad plan | månader (steg 0,5) | veckor med "≈ X mån". Bara Snabbstart använder månader. |
+| Färre än 5 dagar/vecka | – | frågan "Jobbar du de andra dagarna?" (`worksOtherDays`, standard Nej) |
+| Föräldralön | kryssruta | Snabbstart: kryssruta som ger 10 % / 90 % / 180 dagar. Detaljerad plan: tre fält. Räknas i kalendertid (A9). |
+| SGI efter ettårsdagen | – | varning, gör inte planen ogiltig (B4) |
+| Reserverade dagar | "går förlorade" | förlorade dagar är en varning. Dubbeldagar som inte ryms utöver de reserverade gör planen ogiltig (A5, A6). |
+| 15 månader / 1 år | – | `addMonths`/`addYears`: finns inte dagen blir det månadens sista dag |
+| Inkomstgraf | skissens egen beräkning | appens `getMonthlyIncomeForParent` (skatt 30 % tills Fas 4) |
+| Kommun | Fas 3 | befintliga `MunicipalitySelector` i Snabbstart redan i punkt 12, ny data i Fas 4 |
+| Exempel | – | förval i Snabbstart; `OnboardingGuide` tas bort i punkt 18 |
+
+## Samexistens med den gamla vyn
+Tills punkt 18 visas planeraren bara med `?planerare` i adressen. Båda vyerna använder samma tillstånd via `usePlan()` (`src/hooks/usePlan.ts`), så de redigerar samma plan. Månadstabellen byggs av `buildMonthlyData` (`src/utils/monthlyData.ts`).
+
 ## Färger
 Använd sajtens färger via Tailwind: grönt är `green-*` (mappat till Tailwind 2:s emerald i `tailwind.config.js`), inte skissens nyans. Förälder 2 kan använda `indigo-*` (samma som theme-color #4F46E5).
 
 ## Layout
-- **Desktop (≥ 920 px):** två kolumner. Vänster: formulär. Höger: visualisering och hjälp, `position: sticky` så att den syns medan man fyller i.
+- **Desktop (≥ 920 px, Tailwind-brytpunkten `planner:`):** två kolumner. Vänster: formulär. Höger: visualisering och hjälp, `position: sticky` så att den syns medan man fyller i.
 - **Mobil:** en kolumn, med visualiseringen överst och formuläret under.
 - Vänster kolumn har två flikar: **Snabbstart** och **Detaljerad plan**. Båda redigerar samma plan.
 

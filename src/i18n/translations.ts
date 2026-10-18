@@ -116,6 +116,17 @@ export interface Translations {
   worksOtherDaysHelpNo: string; // {days}
   worksOtherDaysHelpYes: string; // {days}
 
+  // Planner (Fas 3)
+  plannerNote: string;
+  plannerBackToOld: string;
+  plannerFormLabel: string;
+  plannerPlanLabel: string;
+  plannerTabsLabel: string;
+  plannerTabQuick: string;
+  plannerTabDetailed: string;
+  plannerComingSoon: string;
+  plannerPlanHeading: string;
+
   // Footer
   disclaimerText: string;
   privacyFooterText: string;
@@ -271,6 +282,17 @@ export const translations: Record<Language, Translations> = {
       "Du är ledig hela veckan men tar bara ut föräldrapenning {days} dagar. De andra dagarna är obetalda.",
     worksOtherDaysHelpYes: "Du får lön för {days} arbetsdagar i veckan.",
 
+    // Planner
+    plannerNote: "Ny planerare – under utveckling",
+    plannerBackToOld: "Till gamla vyn",
+    plannerFormLabel: "Fyll i",
+    plannerPlanLabel: "Er plan",
+    plannerTabsLabel: "Sätt att planera",
+    plannerTabQuick: "Snabbstart",
+    plannerTabDetailed: "Detaljerad plan",
+    plannerComingSoon: "Den här delen byggs i nästa steg.",
+    plannerPlanHeading: "Er plan",
+
     // Footer
     disclaimerText:
       "Beräkningarna är vägledande. Kontakta Försäkringskassan för exakta uppgifter.",
@@ -413,6 +435,17 @@ export const translations: Record<Language, Translations> = {
     worksOtherDaysHelpNo:
       "You are off the whole week but only take parental benefit {days} days. The other days are unpaid.",
     worksOtherDaysHelpYes: "You get salary for {days} working days a week.",
+
+    // Planner
+    plannerNote: "New planner – work in progress",
+    plannerBackToOld: "Back to the old view",
+    plannerFormLabel: "Fill in",
+    plannerPlanLabel: "Your plan",
+    plannerTabsLabel: "Ways to plan",
+    plannerTabQuick: "Quick start",
+    plannerTabDetailed: "Detailed plan",
+    plannerComingSoon: "This part is built in the next step.",
+    plannerPlanHeading: "Your plan",
 
     // Footer
     disclaimerText:

@@ -1,5 +1,5 @@
 import React from "react";
-import { Parent, ParentBenefits } from "../../types";
+import { Parent, ParentalPeriod, ParentBenefits } from "../../types";
 import ParentCard from "../ParentCard";
 import DaysSummary from "./DaysSummary";
 
@@ -8,12 +8,16 @@ interface ParentsSectionProps {
   numParents: 1 | 2;
   parentResults: ParentBenefits[];
   calculatedDoubleDays: number;
-  onUpdateParent: (id: number, field: string, value: any) => void;
-  onUpdatePeriod: (
+  onUpdateParent: <K extends keyof Parent>(
+    id: number,
+    field: K,
+    value: Parent[K],
+  ) => void;
+  onUpdatePeriod: <K extends keyof ParentalPeriod>(
     parentId: number,
     periodId: string,
-    field: string,
-    value: any,
+    field: K,
+    value: ParentalPeriod[K],
   ) => void;
   onAddPeriod: (parentId: number) => void;
   onDeletePeriod: (parentId: number, periodId: string) => void;
