@@ -21,12 +21,10 @@ import {
 } from "./dates";
 import { RULES } from "../rules";
 
-const { sgi: SGI, benefit: BENEFIT, days: DAYS, employerTopUp: TOP_UP } = RULES;
+const { sgi: SGI, benefit: BENEFIT, days: DAYS } = RULES;
 
 // A8: ska bli RULES.tax.averageMunicipalRate (32,38 %). Behålls tills skattemodulen görs.
 const DEFAULT_TAX_RATE = 0.3;
-// A9: ska bli TOP_UP.typicalDays (180). Behålls tills föräldralönen rättas.
-const DEFAULT_TOP_UP_DAYS = 360;
 // Lön räknas på en arbetsvecka med 5 dagar
 const WORK_DAYS_PER_WEEK = 5;
 
@@ -81,6 +79,63 @@ export const getDaysBetweenDates = (
 };
 
 /**
+ * Föräldralön från arbetsgivaren per år, före skatt (A9):
+ * en procentsats av lönen upp till SGI-taket och en annan av lönen över taket.
+ */
+export const yearlyEmployerTopUp = (parent: Parent): number => {
+  const yearlySalary = parent.monthlySalary * 12;
+  const underCeiling = Math.min(yearlySalary, SGI.max);
+  const overCeiling = Math.max(0, yearlySalary - SGI.max);
+
+  return (
+    (underCeiling * parent.topUpUnderCeilingPercent) / 100 +
+    (overCeiling * parent.topUpOverCeilingPercent) / 100
+  );
+};
+
+/**
+ * Föräldralön före skatt för kalenderdagarna fromDay–toDay (dagnummer, inklusive).
+ *
+ * Betalas i kalendertid: under de första topUpDays sammanlagda kalenderdagarna i perioder
+ * på sjukpenningnivå, i tidsordning. Per kalenderdag: årlig föräldralön / 365 × ledighetens
+ * omfattning min(dagar/vecka, 5) / 5. Bara anställda.
+ */
+export const employerTopUpForRange = (
+  parent: Parent,
+  fromDay = -Infinity,
+  toDay = Infinity
+): number => {
+  if (parent.type !== "employed" || parent.topUpDays <= 0) return 0;
+
+  const perCalendarDay = yearlyEmployerTopUp(parent) / 365;
+  if (perCalendarDay <= 0) return 0;
+
+  const highPeriods = parent.periods
+    .filter((period) => period.level === "high")
+    .sort((a, b) => toDayNumber(a.start) - toDayNumber(b.start));
+
+  let remainingDays = parent.topUpDays;
+  let total = 0;
+
+  for (const period of highPeriods) {
+    if (remainingDays <= 0) break;
+
+    const start = toDayNumber(period.start);
+    const paidEnd = Math.min(toDayNumber(periodEnd(period)), start + remainingDays - 1);
+    remainingDays -= paidEnd - start + 1;
+
+    const from = Math.max(start, fromDay);
+    const to = Math.min(paidEnd, toDay);
+    if (to >= from) {
+      const extent = Math.min(period.daysPerWeek, WORK_DAYS_PER_WEEK) / WORK_DAYS_PER_WEEK;
+      total += (to - from + 1) * perCalendarDay * extent;
+    }
+  }
+
+  return total;
+};
+
+/**
  * Beräknar alla förmåner för en förälder
  * @param parent - Förälderns data
  * @param taxRate - Skattesats baserat på kommun (valfri, default 30%)
@@ -124,39 +179,10 @@ export const calculateParentBenefits = (
   const fkBenefitAfterTax =
     highLevelDays * (dailyBenefit - tax) + lowLevelDays * lowLevelAfterTax;
 
-  // Beräkna arbetsgivartillägg (PAG) - baserat på LÖN, inte dagersättning
-  let employerTopUpBeforeTax = 0;
+  // Föräldralön från arbetsgivaren, baserad på lönen
+  const employerTopUpBeforeTax = employerTopUpForRange(parent);
 
-  if (parent.type === "employed" && parent.employerTopUp > 0) {
-    const monthlySalary = parent.monthlySalary;
-    const yearlySalary = monthlySalary * 12;
-
-    const sgiCeilingYearly = SGI.max;
-
-    // Begränsa PAG till max antal dagar från arbetsgivare
-    const pagEligibleDays = Math.min(
-      highLevelDays,
-      parent.employerTopUpDays || DEFAULT_TOP_UP_DAYS
-    );
-
-    if (yearlySalary <= sgiCeilingYearly) {
-      // Lön under taket: PAG = X% av hela lönen
-      const yearlyPAG = yearlySalary * (parent.employerTopUp / 100);
-      const dailyPAG = yearlyPAG / 365;
-      employerTopUpBeforeTax = dailyPAG * pagEligibleDays;
-    } else {
-      // Lön över taket: 10% under tak, 90% över tak (vanligt i kollektivavtal)
-      // A9: användarens procentsats ignoreras här.
-      const underCeilingYearly = sgiCeilingYearly * TOP_UP.underCeilingRate;
-      const overCeilingYearly =
-        (yearlySalary - sgiCeilingYearly) * TOP_UP.overCeilingRate;
-      const totalYearlyPAG = underCeilingYearly + overCeilingYearly;
-      const dailyPAG = totalYearlyPAG / 365;
-      employerTopUpBeforeTax = dailyPAG * pagEligibleDays;
-    }
-  }
-
-  // PAG beskattas med samma skattesats
+  // Föräldralönen beskattas med samma skattesats
   const employerTopUpAfterTax = employerTopUpBeforeTax * (1 - taxRate);
 
   // Totala ersättningar
@@ -188,47 +214,6 @@ export const calculateParentBenefits = (
 };
 
 /**
- * Beräknar hur många PAG-dagar som redan förbrukats innan ett visst datum
- */
-const calculateAccumulatedPAGDays = (
-  parent: Parent,
-  beforeDay: number
-): number => {
-  let accumulatedDays = 0;
-
-  // Sortera perioder kronologiskt
-  const sortedPeriods = [...parent.periods].sort(
-    (a, b) => toDayNumber(a.start) - toDayNumber(b.start)
-  );
-
-  for (const period of sortedPeriods) {
-    const periodStart = toDayNumber(period.start);
-    const lastDay = toDayNumber(periodEnd(period));
-
-    // Om perioden startar efter vårt datum, skippa
-    if (periodStart >= beforeDay) {
-      break;
-    }
-
-    // Om perioden är högNivå, räkna dagarna
-    if (period.level === "high") {
-      // Om perioden slutar före vårt datum, räkna alla dagar
-      if (lastDay < beforeDay) {
-        accumulatedDays += periodDays(period);
-      } else {
-        // Perioden pågår - räkna endast dagar fram till beforeDay
-        const daysInPeriod = lastDay - periodStart + 1;
-        const daysUntilBeforeDate = beforeDay - periodStart;
-        const ratio = daysUntilBeforeDate / daysInPeriod;
-        accumulatedDays += periodDays(period) * ratio;
-      }
-    }
-  }
-
-  return accumulatedDays;
-};
-
-/**
  * Beräknar månadsinkomst för en given månad och förälder
  */
 export const getMonthlyIncomeForParent = (
@@ -244,7 +229,7 @@ export const getMonthlyIncomeForParent = (
   let totalDaysThisMonth = 0;
   let workedDaysOnLeave = 0; // Arbetade dagar under lediga kalenderdagar (A2)
   let totalIncomeThisMonth = 0;
-  let highLevelDaysThisMonth = 0; // För PAG-beräkning
+  let highLevelDaysThisMonth = 0;
   let lowLevelDaysThisMonth = 0; // För visuell indikering
 
   // Loop through all periods to see if any fall within this month
@@ -289,42 +274,8 @@ export const getMonthlyIncomeForParent = (
     }
   }
 
-  // Lägg till PAG om anställd och har högNivå-dagar denna månad
-  if (
-    parent.type === "employed" &&
-    parent.employerTopUp > 0 &&
-    highLevelDaysThisMonth > 0
-  ) {
-    const monthlySalary = parent.monthlySalary;
-    const yearlySalary = monthlySalary * 12;
-    const sgiCeilingYearly = SGI.max;
-
-    // Räkna ut hur många PAG-dagar som redan förbrukats före denna månad
-    const accumulatedPAGDays = calculateAccumulatedPAGDays(parent, monthStart);
-
-    // Hur många PAG-dagar kan vi använda denna månad?
-    const maxPAGDays = parent.employerTopUpDays || DEFAULT_TOP_UP_DAYS;
-    const remainingPAGDays = Math.max(0, maxPAGDays - accumulatedPAGDays);
-    const pagDaysThisMonth = Math.min(highLevelDaysThisMonth, remainingPAGDays);
-
-    if (pagDaysThisMonth > 0) {
-      let dailyPAG = 0;
-
-      if (yearlySalary <= sgiCeilingYearly) {
-        const yearlyPAG = yearlySalary * (parent.employerTopUp / 100);
-        dailyPAG = yearlyPAG / 365;
-      } else {
-        const underCeilingYearly = sgiCeilingYearly * TOP_UP.underCeilingRate;
-        const overCeilingYearly =
-          (yearlySalary - sgiCeilingYearly) * TOP_UP.overCeilingRate;
-        const totalYearlyPAG = underCeilingYearly + overCeilingYearly;
-        dailyPAG = totalYearlyPAG / 365;
-      }
-
-      const pagAfterTax = dailyPAG * pagDaysThisMonth * (1 - taxRate);
-      totalIncomeThisMonth += pagAfterTax;
-    }
-  }
+  // Föräldralön från arbetsgivaren för månadens kalenderdagar
+  totalIncomeThisMonth += employerTopUpForRange(parent, monthStart, monthEnd) * (1 - taxRate);
 
   // Lön för dagar utan ledighet och för arbetade dagar under deltidsledighet
   const daysInFullMonth = monthEnd - monthStart + 1;

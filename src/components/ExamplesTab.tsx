@@ -78,8 +78,11 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
                         Dagar per vecka: {firstParent.periods[0].daysPerWeek}
                       </p>
                     )}
-                    {firstParent.employerTopUp > 0 && (
-                      <p>PAG: {firstParent.employerTopUp}%</p>
+                    {firstParent.topUpUnderCeilingPercent > 0 && (
+                      <p>
+                        Föräldralön: {firstParent.topUpUnderCeilingPercent} % i{" "}
+                        {firstParent.topUpDays} dagar
+                      </p>
                     )}
                   </div>
                 </div>

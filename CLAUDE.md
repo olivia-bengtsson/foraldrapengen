@@ -49,8 +49,8 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 5. ✅ Räkna lön rätt vid deltidsledighet (A2). Perioden har `worksOtherDays` (standard `false`): `true` ger lön för `max(0, 5 − dagar/vecka) / 5`, `false` betyder helt ledig och ingen lön. `validateSgiProtection` varnar (utan att göra planen ogiltig) för helt ledig med färre än 5 dagar/vecka efter ettårsdagen (B4). Månader/år läggs till med `addMonths`/`addYears` (sista dagen i månaden om dagen saknas), även 15-månadersgränsen för dubbeldagar.
 6. ✅ Dubbeldagar: ingen dubbelräkning (`getUsedDays`), korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6). Lägstanivåregeln kontrolleras i tidsordning med `highLevelDaysBefore` (A16). Förlorade reserverade dagar är en varning; dubbeldagar som inte ryms utöver de reserverade, fler än 390 dagar för en förälder och dubbeldagar efter 15 månader gör planen ogiltig.
 7. ✅ Visa rätt SGI och flytta 0,97 in i dagersättningsformeln (A7). `calculateSGI` = årsinkomst (högst 592 000, 0 under 14 200), `calculateDailyBenefit` = round(SGI × 0,97 × 0,8 / 365) inom 250–1 259. B1 (`infoCard1`) rättad samtidigt.
-8. Föräldralön: standard 180 dagar, två procentfält, nytt namn (A9).
-9. Bryt ut den dubblerade logiken för föräldralön, skatt och nivåer i `calculateParentBenefits` och `getMonthlyIncomeForParent` till gemensamma, testade funktioner (görs tillsammans med 4–8).
+8. ✅ Föräldralön: standard 180 dagar, två procentfält, nytt namn (A9). Räknas i kalendertid: sammanlagda kalenderdagar i perioder på sjukpenningnivå, per dag `årlig / 365 × min(dagar/vecka, 5) / 5` (`employerTopUpForRange`, används för både total och månad). B3, B12, B13 rättade samtidigt.
+9. Bryt ut den dubblerade logiken för skatt och nivåer (föräldralön redan klar) i `calculateParentBenefits` och `getMonthlyIncomeForParent` till gemensamma, testade funktioner (görs tillsammans med 4–8).
 10. Rätta avrundningen i `getDaysBetweenDates` och `monthsNeeded` (A11).
 
 **Fas 3 – ny planerare (docs/PLANERARE.md)**
@@ -68,7 +68,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 20. Uppdatera kommunalskatterna till SCB 2026 med alla 290 kommuner (A12) och lägg kommunvalet i Snabbstart.
 
 **Fas 5 – text och länkar**
-21. Rätta alla texter enligt tabellen B1–B20 (B1 redan klar). Uppdatera och kontrollera alla FK-länkar (B19).
+21. Rätta alla texter enligt tabellen B1–B20 (B1, B3, B12, B13 redan klara). Uppdatera och kontrollera alla FK-länkar (B19).
 22. Ta bort död kod: InfoModal, FlashcardModal (om oanvända), migrateParentToPeriods, legacy-fält (C).
 23. Flytta hårdkodade sv/en-texter till translations.ts.
 24. Infotexter för regler som inte valideras: 240-dagarsregeln, 96 dagar efter 4 år, helgregeln (A10, A14).

@@ -21,6 +21,15 @@ describe("createInitialParents", () => {
     }
   });
 
+  // A9: vanliga avtalsvillkor som standard
+  test("A9: föräldralön 10 % / 90 % i 180 dagar", () => {
+    for (const parent of parents) {
+      expect(parent.topUpUnderCeilingPercent).toBe(10);
+      expect(parent.topUpOverCeilingPercent).toBe(90);
+      expect(parent.topUpDays).toBe(180);
+    }
+  });
+
   test("förälder 2 tar över dagen efter förälder 1", () => {
     expect(parents[0].periods[0].start).toBe("2026-03-16");
     expect(parents[1].periods[0].start).toBe("2027-02-15");

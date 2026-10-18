@@ -18,8 +18,9 @@ const parent = (id: number, periods: ParentalPeriod[]): Parent => ({
   name: `Förälder ${id}`,
   type: "employed",
   monthlySalary: 35000,
-  employerTopUp: 0,
-  employerTopUpDays: 180,
+  topUpUnderCeilingPercent: 0,
+  topUpOverCeilingPercent: 0,
+  topUpDays: 180,
   periods,
 });
 

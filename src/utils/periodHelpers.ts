@@ -23,6 +23,10 @@ export const weeksFromMonths = (months: number): number =>
 export const monthsFromWeeks = (weeks: number): number =>
   Math.round(((weeks * 12) / 52) * 2) / 2;
 
+/** Kalenderdagar → ungefärligt antal månader, avrundat till halva månader. */
+export const monthsFromDays = (days: number): number =>
+  Math.round(((days * 12) / 365) * 2) / 2;
+
 /** Första dagen efter förälderns sista period, eller dagens datum om det inte finns några. */
 export const nextFreeStart = (periods: ParentalPeriod[]): string =>
   periods.length === 0 ? todayDate() : addDays(getLatestEndDate(periods), 1);

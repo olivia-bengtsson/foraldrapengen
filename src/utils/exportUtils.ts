@@ -40,7 +40,7 @@ ${parent.name.toUpperCase()}
 ───────────────────────────────────────
 Anställningsform: Anställd
 Månadslön: ${parent.monthlySalary.toLocaleString("sv-SE")} kr
-Arbetsgivartillägg (PAG): ${parent.employerTopUp}%
+Föräldralön från arbetsgivaren: ${parent.topUpUnderCeilingPercent} % under taket, ${parent.topUpOverCeilingPercent} % över taket, ${parent.topUpDays} dagar
 
 PLANERAD LEDIGHET:
 • Antal dagar: ${getTotalDaysFromPeriods(parent.periods)} dagar
@@ -54,7 +54,7 @@ EKONOMI:
 • Högnivådagar (80%): ${result.highLevelDays} dagar
 • Lågnivådagar (${RULES.benefit.lowLevelDaily} kr): ${result.lowLevelDays} dagar
 • Total ersättning efter skatt: ${result.totalBenefitAfterTax.toLocaleString("sv-SE")} kr
-${parent.employerTopUp > 0 ? `• Arbetsgivartillägg: ${result.employerTopUpAmount.toLocaleString("sv-SE")} kr\n` : ""}
+${result.employerTopUpAmount > 0 ? `• Föräldralön från arbetsgivaren efter skatt: ${result.employerTopUpAmount.toLocaleString("sv-SE")} kr\n` : ""}
 `;
   });
 
@@ -151,7 +151,9 @@ export const generateCsv = (
     csv += "Kategori,Värde\n";
     csv += `Anställningsform,Anställd\n`;
     csv += `Månadslön,${parent.monthlySalary}\n`;
-    csv += `Arbetsgivartillägg (PAG),${parent.employerTopUp}%\n`;
+    csv += `Föräldralön under taket,${parent.topUpUnderCeilingPercent}%\n`;
+    csv += `Föräldralön över taket,${parent.topUpOverCeilingPercent}%\n`;
+    csv += `Föräldralön antal dagar,${parent.topUpDays}\n`;
     csv += `\n`;
 
     csv += "PLANERAD LEDIGHET\n";
@@ -169,8 +171,8 @@ export const generateCsv = (
     csv += `Högnivådagar (80%),${result.highLevelDays}\n`;
     csv += `Lågnivådagar (${RULES.benefit.lowLevelDaily} kr),${result.lowLevelDays}\n`;
     csv += `Total ersättning efter skatt,${result.totalBenefitAfterTax.toFixed(0)}\n`;
-    if (parent.employerTopUp > 0) {
-      csv += `Arbetsgivartillägg,${result.employerTopUpAmount.toFixed(0)}\n`;
+    if (result.employerTopUpAmount > 0) {
+      csv += `Föräldralön från arbetsgivaren efter skatt,${result.employerTopUpAmount.toFixed(0)}\n`;
     }
     csv += `\n`;
   });

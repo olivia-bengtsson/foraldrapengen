@@ -2,13 +2,19 @@ import React, { useState } from "react";
 import { Parent, ParentBenefits, ParentalPeriod } from "../types";
 import {
   getTotalDaysFromPeriods,
+  monthsFromDays,
   periodDays,
   validateNoOverlap,
 } from "../utils/periodHelpers";
+import { interpolate, locales } from "../i18n/translations";
 import PeriodCard from "./PeriodCard";
 import InfoTooltip from "./InfoTooltip";
 import { useLanguage } from "../i18n/LanguageContext";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+
+/** Tal från ett formulärfält, begränsat till min–max (tomt fält = min) */
+const clampNumber = (value: string, min: number, max: number): number =>
+  Math.min(max, Math.max(min, Number(value) || 0));
 
 interface ParentCardProps {
   parent: Parent;
@@ -89,45 +95,60 @@ const ParentCard: React.FC<ParentCardProps> = ({
               link="https://www.forsakringskassan.se/foralder/foraldrapenning/arbetsgivaren-betalar-mer"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-gray-600 mb-1">
-                {language === "sv" ? "Procent (%)" : "Percent (%)"}
+                {t.topUpUnderCeilingLabel}
               </label>
               <input
                 type="number"
-                value={parent.employerTopUp}
+                value={parent.topUpUnderCeilingPercent}
                 onChange={(e) =>
-                  onUpdate("employerTopUp", Number(e.target.value))
+                  onUpdate("topUpUnderCeilingPercent", clampNumber(e.target.value, 0, 100))
                 }
                 min="0"
                 max="100"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-green-600 focus:outline-none"
-                placeholder="10"
               />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">
-                {language === "sv" ? "Antal dagar" : "Number of days"}
+                {t.topUpOverCeilingLabel}
               </label>
               <input
                 type="number"
-                value={parent.employerTopUpDays}
+                value={parent.topUpOverCeilingPercent}
                 onChange={(e) =>
-                  onUpdate("employerTopUpDays", Number(e.target.value))
+                  onUpdate("topUpOverCeilingPercent", clampNumber(e.target.value, 0, 100))
                 }
                 min="0"
-                max="390"
+                max="100"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-green-600 focus:outline-none"
-                placeholder="360"
               />
             </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                {t.topUpDaysLabel}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={parent.topUpDays}
+                  onChange={(e) =>
+                    onUpdate("topUpDays", Math.round(clampNumber(e.target.value, 0, 730)))
+                  }
+                  min="0"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-green-600 focus:outline-none"
+                />
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {interpolate(t.periodApproxMonths, {
+                    months: monthsFromDays(parent.topUpDays).toLocaleString(locales[language]),
+                  })}
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {language === "sv"
-              ? "Vanligt är 10% för 180-360 dagar. Kolla ditt kollektivavtal!"
-              : "Common is 10% for 180-360 days. Check your collective agreement!"}
-          </p>
+          <p className="text-xs text-gray-500 mt-1">{t.topUpHint}</p>
         </div>
 
         {/* Help Section - Expandable */}
@@ -250,8 +271,8 @@ const ParentCard: React.FC<ParentCardProps> = ({
               <div className="border-t border-blue-200 pt-3">
                 <h4 className="font-semibold text-sm text-blue-900 mb-2">
                   {language === "sv"
-                    ? "🏢 Arbetsgivartillägg (PAG)"
-                    : "🏢 Employer top-up (PAG)"}
+                    ? "🏢 Föräldralön från arbetsgivaren"
+                    : "🏢 Parental pay from your employer"}
                 </h4>
                 <ul className="text-xs text-gray-700 space-y-1 ml-4">
                   <li>
@@ -265,13 +286,15 @@ const ParentCard: React.FC<ParentCardProps> = ({
                     <strong>
                       {language === "sv" ? "Vanligt:" : "Common:"}
                     </strong>{" "}
-                    10% {language === "sv" ? "av din lön" : "of your salary"}
+                    {language === "sv"
+                      ? "ca 10 % av lönen och ca 90 % av lönedelen över taket"
+                      : "about 10% of salary and about 90% of the part above the cap"}
                   </li>
                   <li>
                     •{" "}
                     {language === "sv"
-                      ? "Betalas ofta för max 180-360 dagar"
-                      : "Often paid for max 180-360 days"}
+                      ? "Betalas oftast i upp till 6 månader"
+                      : "Usually paid for up to 6 months"}
                   </li>
                   <li>
                     •{" "}

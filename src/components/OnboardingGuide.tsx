@@ -58,9 +58,9 @@ const OnboardingGuide: React.FC<OnboardingGuideProps> = ({
       titleSv: "Steg 3: Fyll i föräldrarnas uppgifter",
       titleEn: "Step 3: Enter Parents' Information",
       descriptionSv:
-        "Ange lön, arbetsgivartillägg (PAG), antal dagar ni vill ta ut och när ni planerar att vara lediga. Kalkylatorn beräknar automatiskt slutdatum och ersättning!",
+        "Ange lön, föräldralön från arbetsgivaren, antal dagar ni vill ta ut och när ni planerar att vara lediga. Kalkylatorn beräknar automatiskt slutdatum och ersättning!",
       descriptionEn:
-        "Enter salary, employer top-up (PAG), number of days to take, and when you plan to be on leave. The calculator automatically calculates end date and benefits!",
+        "Enter salary, parental pay from your employer, number of days to take, and when you plan to be on leave. The calculator automatically calculates end date and benefits!",
     },
     {
       icon: Calculator,

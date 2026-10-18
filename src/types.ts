@@ -16,8 +16,10 @@ export interface Parent {
   name: string;
   type: "employed" | "self_employed" | "unemployed";
   monthlySalary: number;
-  employerTopUp: number;
-  employerTopUpDays: number; // Antal dagar arbetsgivartillägg betalas (vanligt 180-360)
+  // Föräldralön från arbetsgivaren (A9). Båda procentsatserna 0 = ingen föräldralön.
+  topUpUnderCeilingPercent: number; // % av lönen upp till SGI-taket, vanligen 10
+  topUpOverCeilingPercent: number; // % av lönen över SGI-taket, vanligen 90
+  topUpDays: number; // Sammanlagda kalenderdagar på sjukpenningnivå, vanligen 180 (≈ 6 mån)
   periods: ParentalPeriod[]; // Array of periods
 }
 

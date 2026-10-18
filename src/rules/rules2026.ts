@@ -62,7 +62,7 @@ export const RULES_2026: ParentalBenefitRules = {
   employerTopUp: {
     underCeilingRate: 0.1,
     overCeilingRate: 0.9,
-    typicalDays: 180, // oftast upp till 6 månader
+    typicalDays: 180, // sammanlagda kalenderdagar på sjukpenningnivå, oftast upp till 6 månader
   },
 
   tax: {

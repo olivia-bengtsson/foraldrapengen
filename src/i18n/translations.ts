@@ -21,6 +21,10 @@ export interface Translations {
   parentLabel: string;
   monthlySalaryLabel: string;
   employerTopUpLabel: string;
+  topUpUnderCeilingLabel: string;
+  topUpOverCeilingLabel: string;
+  topUpDaysLabel: string;
+  topUpHint: string;
   daysToTakeLabel: string;
   daysPerWeekLabel: string;
   startDateLabel: string;
@@ -148,7 +152,12 @@ export const translations: Record<Language, Translations> = {
     // Parent card
     parentLabel: "Förälder",
     monthlySalaryLabel: "Månadslön (kr)",
-    employerTopUpLabel: "Arbetsgivartillägg (PAG) %",
+    employerTopUpLabel: "Föräldralön från arbetsgivaren",
+    topUpUnderCeilingLabel: "Under taket (%)",
+    topUpOverCeilingLabel: "Över taket (%)",
+    topUpDaysLabel: "Antal dagar",
+    topUpHint:
+      "Vanligt är ca 10 % av lönen och ca 90 % av lönedelen över 49 333 kr/mån, i upp till 6 månader. Räknas i kalenderdagar på sjukpenningnivå. Kolla ditt kollektivavtal!",
     daysToTakeLabel: "Antal dagar att ta ut",
     daysPerWeekLabel: "Dagar per vecka",
     startDateLabel: "Startdatum",
@@ -210,9 +219,9 @@ export const translations: Record<Language, Translations> = {
     salaryTooltipTitle: "Månadslön",
     salaryTooltipContent:
       "Ange din månadslön före skatt. Detta används för att beräkna din SGI (sjukpenninggrundande inkomst). Medellönen i Sverige är ca 37 000 kr/månad (2024). Om du har oregelbundna inkomster, använd ett genomsnitt av de senaste 12 månaderna.",
-    pagTooltipTitle: "Arbetsgivartillägg (PAG)",
+    pagTooltipTitle: "Föräldralön från arbetsgivaren",
     pagTooltipContent:
-      "PAG står för kompletterande ersättning som många arbetsgivare betalar utöver föräldrapenningen från Försäkringskassan. Vanligast är 10%, men det kan variera mellan 0-20% beroende på ditt kollektivavtal. Kontakta din arbetsgivare eller fackförbund för att få reda på vad som gäller för dig.",
+      "Med kollektivavtal får du ofta föräldralön från arbetsgivaren utöver föräldrapenningen: ca 10 % av lönen och ca 90 % av lönedelen över 49 333 kr/mån, oftast i upp till 6 månader. Villkor och krav på anställningstid varierar. Fråga din arbetsgivare eller ditt fackförbund vad som gäller för dig.",
     daysToTakeTooltipTitle: "Antal dagar",
     daysToTakeTooltipContent:
       "Ni har totalt 480 dagar att dela mellan er. Varje förälder har 90 reserverade dagar som inte kan överlåtas. Vanligast är att dela lika (240 dagar vardera), men ni kan dela upp dagarna hur ni vill. Tänk på att 390 dagar ger högre ersättning (högnivå) medan resterande 90 dagar ger lägre ersättning (180 kr/dag).",
@@ -235,9 +244,9 @@ export const translations: Record<Language, Translations> = {
     infoCard3Title: "Högnivå och lågnivå",
     infoCard3Content:
       "De första 390 dagarna får du 80% av din SGI (högnivå). Resterande 90 dagar ger 180 kr/dag (lågnivå). Använd högnivådagarna när barnet är litet!",
-    infoCard4Title: "Arbetsgivartillägg",
+    infoCard4Title: "Föräldralön från arbetsgivaren",
     infoCard4Content:
-      "Många arbetsgivare ger 10-20% extra ersättning utöver FK:s föräldrapenning enligt kollektivavtal. Kolla med din arbetsgivare!",
+      "Med kollektivavtal får du ofta ca 10 % av lönen och ca 90 % av lönedelen över 49 333 kr/mån, oftast i upp till 6 månader. Kolla med din arbetsgivare!",
     infoCard5Title: "Dubbeldagar",
     infoCard5Content:
       "Under barnets första 15 månader kan ni vara lediga samtidigt upp till 60 dagar. När ni tar ut en dubbeldag räknas två dagar av. 60 dubbeldagar = 120 dagar från era 480.",
@@ -286,7 +295,12 @@ export const translations: Record<Language, Translations> = {
     // Parent card
     parentLabel: "Parent",
     monthlySalaryLabel: "Monthly Salary (SEK)",
-    employerTopUpLabel: "Employer Top-up %",
+    employerTopUpLabel: "Parental pay from your employer",
+    topUpUnderCeilingLabel: "Below the cap (%)",
+    topUpOverCeilingLabel: "Above the cap (%)",
+    topUpDaysLabel: "Number of days",
+    topUpHint:
+      "Common is about 10% of salary and about 90% of the part above 49,333 SEK/month, for up to 6 months. Counted in calendar days at sickness benefit level. Check your collective agreement!",
     daysToTakeLabel: "Days to take",
     daysPerWeekLabel: "Days per week",
     startDateLabel: "Start date",
@@ -348,9 +362,9 @@ export const translations: Record<Language, Translations> = {
     salaryTooltipTitle: "Monthly Salary",
     salaryTooltipContent:
       "Enter your monthly salary before tax. This is used to calculate your SGI (sickness benefit qualifying income). Average salary in Sweden is approximately 37,000 SEK/month (2024). If you have irregular income, use an average of the last 12 months.",
-    pagTooltipTitle: "Employer Top-up",
+    pagTooltipTitle: "Parental pay from your employer",
     pagTooltipContent:
-      "Complementary compensation that many employers pay in addition to parental benefit from the Social Insurance Agency. Most common is 10%, but it can vary between 0-20% depending on your collective agreement. Contact your employer or union to find out what applies to you.",
+      "With a collective agreement you often get parental pay from your employer in addition to parental benefit: about 10% of your salary and about 90% of the part above 49,333 SEK/month, usually for up to 6 months. Terms and employment requirements vary. Ask your employer or union what applies to you.",
     daysToTakeTooltipTitle: "Number of days",
     daysToTakeTooltipContent:
       "You have a total of 480 days to share. Each parent has 90 reserved days that cannot be transferred. Most common is to share equally (240 days each), but you can divide the days as you wish. Note that 390 days give higher benefit (high level) while the remaining 90 days give lower benefit (180 SEK/day).",
@@ -373,9 +387,9 @@ export const translations: Record<Language, Translations> = {
     infoCard3Title: "High and low level",
     infoCard3Content:
       "The first 390 days you get 80% of your SGI (high level). Remaining 90 days give 180 SEK/day (low level). Use high-level days when the child is young!",
-    infoCard4Title: "Employer Top-up",
+    infoCard4Title: "Parental pay from your employer",
     infoCard4Content:
-      "Many employers give 10-20% extra compensation in addition to the Social Insurance Agency's parental benefit according to collective agreements. Check with your employer!",
+      "With a collective agreement you often get about 10% of your salary and about 90% of the part above 49,333 SEK/month, usually for up to 6 months. Check with your employer!",
     infoCard5Title: "Double days",
     infoCard5Content:
       "During the child's first 15 months, you can be on leave simultaneously for up to 60 days. When you take a double day, two days are counted. 60 double days = 120 days from your 480.",

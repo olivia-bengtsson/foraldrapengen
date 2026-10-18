@@ -10,6 +10,7 @@ import {
   calculateParentBenefits,
   calculateSGI,
   calculateTax,
+  employerTopUpForRange,
   getDaysBetweenDates,
   getMonthlyIncomeForParent,
   validateAllRules,
@@ -19,9 +20,19 @@ import {
   validateReservedDays,
   validateSgiProtection,
   validateTotalDays,
+  yearlyEmployerTopUp,
 } from "./calculations";
+import { monthEndDay, monthStartDay } from "./dates";
 
 const TAX_RATE = 0.3;
+
+// Föräldralön med vanliga villkor, och föräldralön per kalenderdag vid lön 35 000 kr/mån
+const TOP_UP_10_90 = {
+  topUpUnderCeilingPercent: 10,
+  topUpOverCeilingPercent: 90,
+  topUpDays: 180,
+};
+const PER_DAY_35000 = (35000 * 12 * 0.1) / 365;
 
 const makePeriod = (overrides: Partial<ParentalPeriod> = {}): ParentalPeriod => ({
   id: "p1",
@@ -38,8 +49,9 @@ const makeParent = (overrides: Partial<Parent> = {}): Parent => ({
   name: "Förälder 1",
   type: "employed",
   monthlySalary: 35000,
-  employerTopUp: 0,
-  employerTopUpDays: 180,
+  topUpUnderCeilingPercent: 0,
+  topUpOverCeilingPercent: 0,
+  topUpDays: 180,
   periods: [],
   ...overrides,
 });
@@ -151,70 +163,126 @@ describe("calculateParentBenefits", () => {
     );
   });
 
-  test("föräldralön 10 % under taket betalas bara för avtalade dagar", () => {
+  test("föräldralön ingår i totalen efter skatt", () => {
     const parent = makeParent({
-      employerTopUp: 10,
-      employerTopUpDays: 180,
+      ...TOP_UP_10_90,
       periods: [makePeriod({ weeks: 48 })], // 240 dagar
     });
 
     const result = calculateParentBenefits(parent, TAX_RATE);
 
-    // 10 % av årslönen 420 000 kr, fördelat per dag, i 180 dagar
-    const expectedBeforeTax = ((420000 * 0.1) / 365) * 180;
+    // 180 kalenderdagar × 10 % av 420 000 kr / 365
+    const expectedBeforeTax = PER_DAY_35000 * 180;
     expect(result.totalBenefitBeforeTax - result.fkBenefitBeforeTax).toBeCloseTo(
       expectedBeforeTax
     );
-    expect(result.employerTopUpAmount).toBeCloseTo(
-      expectedBeforeTax * (1 - TAX_RATE)
-    );
+    expect(result.employerTopUpAmount).toBeCloseTo(expectedBeforeTax * (1 - TAX_RATE));
   });
+});
 
-  test("föräldralön begränsas av antalet dagar på sjukpenningnivå", () => {
-    const parent = makeParent({
-      employerTopUp: 10,
-      employerTopUpDays: 180,
-      periods: [makePeriod({ weeks: 20 })], // 100 dagar
+// A9: föräldralön i kalendertid, sammanlagda kalenderdagar i perioder på sjukpenningnivå
+describe("employerTopUpForRange", () => {
+  const topUpParent = (...periods: Partial<ParentalPeriod>[]) =>
+    makeParent({
+      ...TOP_UP_10_90,
+      periods: periods.map((p, i) => makePeriod({ id: `p${i + 1}`, ...p })),
     });
 
-    const result = calculateParentBenefits(parent, TAX_RATE);
-
-    expect(result.totalBenefitBeforeTax - result.fkBenefitBeforeTax).toBeCloseTo(
-      ((420000 * 0.1) / 365) * 100
+  test("5 dagar/vecka: 180 kalenderdagar", () => {
+    expect(employerTopUpForRange(topUpParent({ weeks: 48 }))).toBeCloseTo(
+      PER_DAY_35000 * 180
     );
   });
 
-  // A9: de flesta avtal ger föräldralön i upp till 6 månader, standard ska vara 180 dagar.
-  test.skip("A9: utan angivet antal dagar betalas föräldralön i 180 dagar", () => {
-    const parent = makeParent({
-      employerTopUp: 10,
-      employerTopUpDays: 0,
-      periods: [makePeriod({ weeks: 48 })], // 240 dagar
-    });
-
-    const result = calculateParentBenefits(parent, TAX_RATE);
-
-    expect(result.totalBenefitBeforeTax - result.fkBenefitBeforeTax).toBeCloseTo(
-      ((420000 * 0.1) / 365) * 180
+  test("3 dagar/vecka: 180 kalenderdagar × 3/5", () => {
+    expect(employerTopUpForRange(topUpParent({ weeks: 48, daysPerWeek: 3 }))).toBeCloseTo(
+      PER_DAY_35000 * 180 * (3 / 5)
     );
   });
 
-  // A9: över taket ignoreras användarens procentsats och 10 % är hårdkodat.
-  test.skip("A9: vald procentsats används även när lönen är över taket", () => {
-    const parent = makeParent({
+  test("7 dagar/vecka ger samma nivå som 5 dagar/vecka", () => {
+    expect(employerTopUpForRange(topUpParent({ weeks: 48, daysPerWeek: 7 }))).toBeCloseTo(
+      PER_DAY_35000 * 180
+    );
+  });
+
+  test("kortare ledighet än 180 dagar ger föräldralön för hela perioden", () => {
+    // 20 veckor = 140 kalenderdagar
+    expect(employerTopUpForRange(topUpParent({ weeks: 20 }))).toBeCloseTo(
+      PER_DAY_35000 * 140
+    );
+  });
+
+  test("uppdelade perioder räknas sammanlagt, lägstanivå räknas inte", () => {
+    const parent = topUpParent(
+      { start: "2026-03-16", weeks: 10 }, // 70 kalenderdagar
+      { start: "2026-05-25", weeks: 4, level: "low" },
+      { start: "2026-09-07", weeks: 20 } // 140 kalenderdagar, varav 110 med föräldralön
+    );
+
+    expect(employerTopUpForRange(parent)).toBeCloseTo(PER_DAY_35000 * 180);
+  });
+
+  test("bara lägstanivå ger ingen föräldralön", () => {
+    expect(employerTopUpForRange(topUpParent({ weeks: 20, level: "low" }))).toBe(0);
+  });
+
+  test("egenföretagare får ingen föräldralön", () => {
+    const parent = { ...topUpParent({ weeks: 48 }), type: "self_employed" as const };
+    expect(employerTopUpForRange(parent)).toBe(0);
+  });
+
+  test("0 % under och över taket ger ingen föräldralön", () => {
+    const parent = {
+      ...topUpParent({ weeks: 48 }),
+      topUpUnderCeilingPercent: 0,
+      topUpOverCeilingPercent: 0,
+    };
+    expect(employerTopUpForRange(parent)).toBe(0);
+  });
+
+  // A9: över taket användes 10 % hårdkodat i stället för vald procentsats.
+  test("A9: vald procentsats används även när lönen är över taket", () => {
+    const parent = {
+      ...topUpParent({ weeks: 36 }),
       monthlySalary: 70000,
-      employerTopUp: 5,
-      employerTopUpDays: 180,
-      periods: [makePeriod({ weeks: 36 })], // 180 dagar
-    });
+      topUpUnderCeilingPercent: 5,
+    };
 
-    const result = calculateParentBenefits(parent, TAX_RATE);
+    const yearlyTopUp = 592000 * 0.05 + (70000 * 12 - 592000) * 0.9;
+    expect(yearlyEmployerTopUp(parent)).toBeCloseTo(yearlyTopUp);
+    expect(employerTopUpForRange(parent)).toBeCloseTo((yearlyTopUp / 365) * 180);
+  });
 
-    const yearlyCeiling = 592000;
-    const yearlyTopUp = yearlyCeiling * 0.05 + (70000 * 12 - yearlyCeiling) * 0.9;
-    expect(result.totalBenefitBeforeTax - result.fkBenefitBeforeTax).toBeCloseTo(
-      (yearlyTopUp / 365) * 180
+  test("summan av månaderna är lika med totalen", () => {
+    const parent = topUpParent({ start: "2026-03-16", weeks: 48, daysPerWeek: 3 });
+
+    let sum = 0;
+    for (let month = 2; month < 2 + 14; month++) {
+      const year = 2026 + Math.floor(month / 12);
+      sum += employerTopUpForRange(
+        parent,
+        monthStartDay(year, month % 12),
+        monthEndDay(year, month % 12)
+      );
+    }
+
+    expect(sum).toBeCloseTo(employerTopUpForRange(parent));
+  });
+
+  test("månadsinkomsten innehåller föräldralön bara de första 180 dagarna", () => {
+    // Start 1 april: dag 180 är 27 september
+    const parent = topUpParent({ start: "2026-04-01", weeks: 48 });
+    const benefits = calculateParentBenefits(parent, TAX_RATE);
+    const leavePerMonth = (days: number) => benefits.dailyBenefitAfterTax * 5 * (days / 7);
+
+    const april = getMonthlyIncomeForParent(parent, benefits, 2026, 3, TAX_RATE);
+    expect(april.total).toBeCloseTo(
+      leavePerMonth(30) + PER_DAY_35000 * 30 * (1 - TAX_RATE)
     );
+
+    const october = getMonthlyIncomeForParent(parent, benefits, 2026, 9, TAX_RATE);
+    expect(october.total).toBeCloseTo(leavePerMonth(31));
   });
 });
 

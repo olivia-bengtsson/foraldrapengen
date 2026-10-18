@@ -85,6 +85,9 @@ Samma platta procentsats används på både lön och föräldrapenning. Lön få
 - Över taket ignoreras användarens procentsats och 10/90 är hårdkodat. Inför två fält: % under taket (standard 10) och % över taket (standard 90).
 - 49 333 är hårdkodat på två ställen.
 - "PAG" är inget etablerat begrepp. Kalla det "Föräldralön från arbetsgivaren".
+- Perioden räknas per uttagen föräldrapenningdag. Avtal med "upp till 6 månader" avser kalendertid. Vid färre än 5 dagar/vecka ger dagräkningen samma totala föräldralön utspridd över mycket längre tid (3 dagar/vecka: 180 dagar tar 14 månader), alltså en kraftig överskattning.
+
+Åtgärd: föräldralön i kalendertid, räknat som sammanlagda kalenderdagar i perioder på sjukpenningnivå (standard 180 ≈ 6 mån). Per kalenderdag: årlig föräldralön / 365 × min(dagar/vecka, 5) / 5, där årlig föräldralön = min(årslön, SGI-taket) × % under + max(0, årslön − SGI-taket) × % över. Villkoren varierar mellan avtal.
 
 ### A10. 240-dagarsregeln och grundnivån saknas
 Den som inte haft SGI ≥ 7 083 kr/mån i 240 dagar före födseln får lägre ersättning de första 180 dagarna. Visa minst en informationsruta vid låg lön.

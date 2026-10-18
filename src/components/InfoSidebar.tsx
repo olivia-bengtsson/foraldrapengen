@@ -70,14 +70,14 @@ const InfoSidebar: React.FC<InfoSidebarProps> = ({
       id: "pag",
       title:
         language === "sv"
-          ? "PAG - Föräldrapenningtillägg"
-          : "PAG - Parental Allowance Supplement",
+          ? "Föräldralön från arbetsgivaren"
+          : "Parental pay from your employer",
       content:
         language === "sv"
-          ? "Om din arbetsgivare har kollektivavtal kan du få föräldrapenningtillägg (PAG) från arbetsgivaren utöver föräldrapenningen från Försäkringskassan. Vanligt är 10% av lönen upp till SGI-taket (49 000 kr/mån 2025) och 90% av lönen över taket. Detta betalas ofta i 3-12 månader beroende på anställningstid och avtal."
-          : "If your employer has a collective agreement, you may receive a parental allowance supplement (PAG) from your employer in addition to parental allowance from Försäkringskassan. Typically 10% of salary up to the SGI ceiling (49,000 SEK/month 2025) and 90% of salary above the ceiling. This is often paid for 3-12 months depending on employment duration and agreement.",
+          ? "Om din arbetsgivare har kollektivavtal kan du få föräldralön utöver föräldrapenningen från Försäkringskassan. Vanligt är ca 10 % av lönen upp till SGI-taket (49 333 kr/mån 2026) och ca 90 % av lönen över taket. Den betalas oftast i upp till 6 månader, beroende på avtal och anställningstid."
+          : "If your employer has a collective agreement, you may get parental pay in addition to parental benefit from Försäkringskassan. Typically about 10% of salary up to the SGI cap (49,333 SEK/month in 2026) and about 90% of salary above the cap. It is usually paid for up to 6 months, depending on the agreement and how long you have been employed.",
       link: "https://www.st.org/rad-och-stod/dig-som-foralder/foraldralon",
-      linkText: language === "sv" ? "Läs mer om PAG" : "Read more about PAG",
+      linkText: language === "sv" ? "Läs mer om föräldralön" : "Read more about parental pay",
     },
     {
       id: "double",

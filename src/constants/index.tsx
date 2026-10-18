@@ -3,6 +3,7 @@
 import { Parent, ParentalPeriod } from "../types";
 import { generatePeriodId } from "../utils/periodHelpers";
 import { addDays, todayDate } from "../utils/dates";
+import { RULES } from "../rules";
 
 // Försäkringskassan länkar
 export { FK_LINKS } from "./FkLinks";
@@ -35,6 +36,13 @@ const examplePeriod = (
   level: ParentalPeriod["level"] = "high"
 ) => period(today, startWeek, weeks, daysPerWeek, level);
 
+/** Föräldralön från arbetsgivaren med vanliga avtalsvillkor (A9) */
+export const DEFAULT_TOP_UP = {
+  topUpUnderCeilingPercent: Math.round(RULES.employerTopUp.underCeilingRate * 100),
+  topUpOverCeilingPercent: Math.round(RULES.employerTopUp.overCeilingRate * 100),
+  topUpDays: RULES.employerTopUp.typicalDays,
+};
+
 /**
  * Startläget: varje förälder tar sina 195 dagar på sjukpenningnivå (39 veckor) följt av
  * 45 dagar på lägstanivå (9 veckor), 5 dagar/vecka. Förälder 2 tar över dagen efter förälder 1.
@@ -46,8 +54,7 @@ export const createInitialParents = (start: string): Parent[] => [
     name: "Förälder 1",
     type: "employed",
     monthlySalary: 35000,
-    employerTopUp: 10,
-    employerTopUpDays: 360,
+    ...DEFAULT_TOP_UP,
     periods: [period(start, 0, 39, 5, "high"), period(start, 39, 9, 5, "low")],
   },
   {
@@ -55,8 +62,7 @@ export const createInitialParents = (start: string): Parent[] => [
     name: "Förälder 2",
     type: "employed",
     monthlySalary: 35000,
-    employerTopUp: 10,
-    employerTopUpDays: 360,
+    ...DEFAULT_TOP_UP,
     periods: [period(start, 48, 39, 5, "high"), period(start, 87, 9, 5, "low")],
   },
 ];
@@ -72,15 +78,14 @@ export const EXAMPLES = {
   maxMoney: {
     name: "Maximera inkomst",
     description:
-      "Högre lön, PAG-tillägg, ta ledigt 7 dagar/vecka för snabbast återgång till arbete",
+      "Högre lön, föräldralön från arbetsgivaren, ta ledigt 7 dagar/vecka för snabbast återgång till arbete",
     parents: [
       {
         id: 1,
         name: "Förälder 1",
         type: "employed" as const,
         monthlySalary: 45000,
-        employerTopUp: 20,
-        employerTopUpDays: 360,
+        ...DEFAULT_TOP_UP,
         periods: [
           examplePeriod(0, 27, 7), // 189 dagar
           examplePeriod(27, 6, 7, "low"), // 42 dagar
@@ -91,8 +96,7 @@ export const EXAMPLES = {
         name: "Förälder 2",
         type: "employed" as const,
         monthlySalary: 45000,
-        employerTopUp: 20,
-        employerTopUpDays: 360,
+        ...DEFAULT_TOP_UP,
         periods: [
           examplePeriod(33, 27, 7), // 189 dagar
           examplePeriod(60, 6, 7, "low"), // 42 dagar
@@ -110,8 +114,7 @@ export const EXAMPLES = {
         name: "Förälder 1",
         type: "employed" as const,
         monthlySalary: 38000,
-        employerTopUp: 10,
-        employerTopUpDays: 360,
+        ...DEFAULT_TOP_UP,
         periods: [
           examplePeriod(0, 21, 5), // 105 dagar
           examplePeriod(48, 21, 5), // 105 dagar, efter förälder 2:s första period
@@ -122,8 +125,7 @@ export const EXAMPLES = {
         name: "Förälder 2",
         type: "employed" as const,
         monthlySalary: 32000,
-        employerTopUp: 10,
-        employerTopUpDays: 360,
+        ...DEFAULT_TOP_UP,
         periods: [
           examplePeriod(21, 27, 5), // 135 dagar, efter förälder 1:s första period
           examplePeriod(69, 9, 5), // 45 dagar, efter förälder 1:s andra period
@@ -141,8 +143,7 @@ export const EXAMPLES = {
         name: "Förälder",
         type: "employed" as const,
         monthlySalary: 35000,
-        employerTopUp: 10,
-        employerTopUpDays: 360,
+        ...DEFAULT_TOP_UP,
         periods: [
           examplePeriod(0, 78, 5), // 390 dagar
           examplePeriod(78, 18, 5, "low"), // 90 dagar

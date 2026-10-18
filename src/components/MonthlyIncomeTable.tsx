@@ -67,14 +67,14 @@ const MonthlyIncomeTable: React.FC<MonthlyIncomeTableProps> = ({
               <li>
                 <span className="text-green-700 font-medium">👶 Grön</span> ={" "}
                 {language === "sv"
-                  ? "Sjukpenningnivå (~80% av lön + PAG)"
-                  : "Sickness benefit level (~80% salary + employer top-up)"}
+                  ? "Sjukpenningnivå (~80% av lön + föräldralön)"
+                  : "Sickness benefit level (~80% salary + parental pay)"}
               </li>
               <li>
                 <span className="text-orange-600 font-medium">⚠️ Orange</span> ={" "}
                 {language === "sv"
-                  ? "Lägstanivå (180 kr/dag, utan PAG)"
-                  : "Minimum level (180 SEK/day, no employer top-up)"}
+                  ? "Lägstanivå (180 kr/dag, utan föräldralön)"
+                  : "Minimum level (180 SEK/day, no parental pay)"}
               </li>
               <li>
                 <span className="text-gray-400 font-medium">💼 Grå</span> ={" "}

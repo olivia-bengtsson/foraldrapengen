@@ -187,8 +187,9 @@ describe("getUsedDays / getRemainingDays (A4)", () => {
     name: "Förälder",
     type: "employed",
     monthlySalary: 35000,
-    employerTopUp: 0,
-    employerTopUpDays: 180,
+    topUpUnderCeilingPercent: 0,
+    topUpOverCeilingPercent: 0,
+    topUpDays: 180,
     periods,
   });
 
