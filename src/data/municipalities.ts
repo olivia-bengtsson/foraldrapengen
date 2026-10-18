@@ -1,6 +1,8 @@
 // Kommunalskatt per kommun i Sverige för 2025
 // Data från SCB (Statistiska centralbyrån)
 
+import { DEFAULT_TAX_RATE } from "../utils/tax";
+
 export interface Municipality {
   name: string;
   county: string;
@@ -606,8 +608,8 @@ export const calculateTaxRate = (
   isChurchMember: boolean = false
 ): number => {
   if (!municipalityName) {
-    // Använd standardskatt 30% om ingen kommun angiven
-    return 0.3;
+    // Standardskatt om ingen kommun angiven
+    return DEFAULT_TAX_RATE;
   }
 
   const municipality = findMunicipality(municipalityName);

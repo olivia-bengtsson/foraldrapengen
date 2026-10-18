@@ -10,7 +10,10 @@ import {
   calculateParentBenefits,
   calculateSGI,
   calculateTax,
+  dailyBenefitForLevel,
   employerTopUpForRange,
+  fkBenefitForRange,
+  leaveMonths,
   getDaysBetweenDates,
   getMonthlyIncomeForParent,
   validateAllRules,
@@ -142,8 +145,61 @@ describe("calculateTax", () => {
 
 describe("getDaysBetweenDates", () => {
   // A11: både start- och slutdatum ska räknas med (+1).
-  test.skip("A11: en vecka måndag–söndag är 7 dagar", () => {
+  test("A11: en vecka måndag–söndag är 7 dagar", () => {
     expect(getDaysBetweenDates("2026-03-02", "2026-03-08")).toBe(7);
+  });
+
+  test("samma dag är 1 dag", () => {
+    expect(getDaysBetweenDates("2026-03-02", "2026-03-02")).toBe(1);
+  });
+});
+
+describe("leaveMonths", () => {
+  // A11: månader räknas från datumen, inte som veckor / 4,33
+  test("A11: 48 veckor är 336 kalenderdagar × 12 / 365", () => {
+    expect(leaveMonths([makePeriod({ weeks: 48 })])).toBeCloseTo((336 * 12) / 365);
+  });
+
+  test("ingår som monthsNeeded i calculateParentBenefits", () => {
+    const parent = withPeriods({ weeks: 10 }, { start: "2026-08-03", weeks: 16 });
+    expect(calculateParentBenefits(parent, TAX_RATE).monthsNeeded).toBeCloseTo(
+      (26 * 7 * 12) / 365
+    );
+  });
+});
+
+describe("fkBenefitForRange", () => {
+  const DAILY = 893;
+  const periods = [
+    makePeriod({ id: "high", start: "2026-03-16", weeks: 20 }), // 100 dagar
+    makePeriod({ id: "low", start: "2026-08-03", weeks: 4, level: "low" }), // 20 dagar
+  ];
+
+  test("hela planen: dagar × dagersättning och dagar × 180", () => {
+    expect(fkBenefitForRange(periods, DAILY)).toEqual({
+      beforeTax: 100 * DAILY + 20 * 180,
+      highDays: 100,
+      lowDays: 20,
+    });
+  });
+
+  test("dailyBenefitForLevel", () => {
+    expect(dailyBenefitForLevel("high", DAILY)).toBe(DAILY);
+    expect(dailyBenefitForLevel("low", DAILY)).toBe(180);
+  });
+
+  test("summan av månaderna är lika med hela planen", () => {
+    let beforeTax = 0;
+    for (let month = 2; month <= 8; month++) {
+      beforeTax += fkBenefitForRange(
+        periods,
+        DAILY,
+        monthStartDay(2026, month),
+        monthEndDay(2026, month)
+      ).beforeTax;
+    }
+
+    expect(beforeTax).toBeCloseTo(fkBenefitForRange(periods, DAILY).beforeTax);
   });
 });
 

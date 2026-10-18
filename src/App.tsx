@@ -13,6 +13,7 @@ import {
   getMonthlyIncomeForParent,
   validateAllRules,
 } from "./utils/calculations";
+import { DEFAULT_TAX_RATE } from "./utils/tax";
 import { EXAMPLES, ExampleKey, createInitialParents } from "./constants";
 import {
   calculateDoubleDays,
@@ -60,7 +61,7 @@ const ForaldrapengenCalculator = () => {
 
   // Municipality and tax settings
   const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
-  const [taxRate, setTaxRate] = useState<number>(0.3); // 30% default
+  const [taxRate, setTaxRate] = useState<number>(DEFAULT_TAX_RATE);
   const [isChurchMember, setIsChurchMember] = useState<boolean>(false);
 
   // Validation warnings

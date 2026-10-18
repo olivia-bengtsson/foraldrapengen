@@ -1,6 +1,10 @@
 import { Parent, ParentalPeriod } from "../types";
+import { toDayNumber } from "./dates";
 import {
+  benefitDaysInRange,
   calculateDoubleDays,
+  calendarDaysInRange,
+  daysByLevel,
   getRemainingDays,
   getUsedDays,
   highLevelDaysBefore,
@@ -206,5 +210,43 @@ describe("getUsedDays / getRemainingDays (A4)", () => {
     const parents = [parent([makePeriod({ weeks: 20 })]), parent([makePeriod({ weeks: 20 })])];
 
     expect(getUsedDays(parents, 1)).toBe(100);
+  });
+});
+
+describe("daysByLevel", () => {
+  test("summerar dagar per nivå", () => {
+    const periods = [
+      makePeriod({ weeks: 10 }),
+      makePeriod({ weeks: 4, level: "low" }),
+      makePeriod({ weeks: 2, daysPerWeek: 3 }),
+    ];
+    expect(daysByLevel(periods)).toEqual({ high: 56, low: 20 });
+  });
+
+  test("inga perioder", () => {
+    expect(daysByLevel([])).toEqual({ high: 0, low: 0 });
+  });
+});
+
+describe("calendarDaysInRange / benefitDaysInRange", () => {
+  // 2–29 mars 2026, 4 veckor
+  const period = makePeriod({ start: "2026-03-02", weeks: 4, daysPerWeek: 5 });
+
+  test("hela perioden", () => {
+    expect(calendarDaysInRange(period)).toBe(28);
+    expect(benefitDaysInRange(period)).toBe(periodDays(period));
+  });
+
+  test("del av perioden", () => {
+    // 2–8 mars
+    const from = toDayNumber("2026-03-02");
+    const to = toDayNumber("2026-03-08");
+    expect(calendarDaysInRange(period, from, to)).toBe(7);
+    expect(benefitDaysInRange(period, from, to)).toBe(5);
+  });
+
+  test("utanför perioden", () => {
+    const day = toDayNumber("2026-04-01");
+    expect(calendarDaysInRange(period, day, day + 10)).toBe(0);
   });
 });

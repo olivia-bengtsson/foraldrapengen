@@ -31,6 +31,39 @@ export const monthsFromDays = (days: number): number =>
 export const nextFreeStart = (periods: ParentalPeriod[]): string =>
   periods.length === 0 ? todayDate() : addDays(getLatestEndDate(periods), 1);
 
+/** Antal föräldrapenningdagar per nivå. */
+export const daysByLevel = (
+  periods: ParentalPeriod[]
+): { high: number; low: number } =>
+  periods.reduce(
+    (sum, period) => ({
+      ...sum,
+      [period.level]: sum[period.level] + periodDays(period),
+    }),
+    { high: 0, low: 0 }
+  );
+
+/** Kalenderdagar i perioden som ligger inom fromDay–toDay (dagnummer, inklusive). */
+export const calendarDaysInRange = (
+  period: ParentalPeriod,
+  fromDay = -Infinity,
+  toDay = Infinity
+): number => {
+  const from = Math.max(toDayNumber(period.start), fromDay);
+  const to = Math.min(toDayNumber(periodEnd(period)), toDay);
+  return Math.max(0, to - from + 1);
+};
+
+/**
+ * Föräldrapenningdagar i perioden inom fromDay–toDay: kalenderdagar × dagar per vecka / 7.
+ * Över hela perioden blir det periodDays.
+ */
+export const benefitDaysInRange = (
+  period: ParentalPeriod,
+  fromDay = -Infinity,
+  toDay = Infinity
+): number => (calendarDaysInRange(period, fromDay, toDay) * period.daysPerWeek) / 7;
+
 // Calculate total days from all periods
 export const getTotalDaysFromPeriods = (periods: ParentalPeriod[]): number => {
   return periods.reduce((sum, period) => sum + periodDays(period), 0);

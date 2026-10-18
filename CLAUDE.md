@@ -19,6 +19,7 @@ Föräldrapengen (foraldrapengen.se) är en gratis kalkylator som hjälper för�
 - Använd strikta typer – undvik `any`.
 - Datum är alltid strängar `YYYY-MM-DD` och hanteras med funktionerna i `src/utils/dates.ts` (rena kalenderdatum, ingen tidszon). Använd inte `new Date(sträng)`, `toISOString()` eller `setDate` direkt. Periodlogik (slutdatum, överlapp, dubbeldagar) ligger i `src/utils/periodHelpers.ts`.
 - Testerna körs i svensk tid (`TZ=Europe/Stockholm` via `jest.globalSetup.js`).
+- **Referensfilen för belopp** (`src/utils/__fixtures__/amounts.json`, testas i `src/utils/amounts.test.ts`) får bara genereras om (`UPDATE_FIXTURE=1 CI=true npm test -- amounts`) när en ändring **avsiktligt** ändrar belopp. Säg då vilka belopp som ändrats och varför, så att det kan granskas innan commit. Fallerar referenstestet utan att belopp ska ändras är det ett fel i koden som ska rättas, inte en fil som ska genereras om.
 - All användarsynlig text ska gå via translations.ts, inte hårdkodas med `language === "sv" ? ... : ...`.
 - Gör en uppgift i taget. Förklara kort vad du ändrat och varför.
 - Kör `npm test` och `npm run build` innan du säger att något är klart.
@@ -50,8 +51,8 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 6. ✅ Dubbeldagar: ingen dubbelräkning (`getUsedDays`), korrekt validering (A4, A5). Rätta budskapet om reserverade dagar (A6). Lägstanivåregeln kontrolleras i tidsordning med `highLevelDaysBefore` (A16). Förlorade reserverade dagar är en varning; dubbeldagar som inte ryms utöver de reserverade, fler än 390 dagar för en förälder och dubbeldagar efter 15 månader gör planen ogiltig.
 7. ✅ Visa rätt SGI och flytta 0,97 in i dagersättningsformeln (A7). `calculateSGI` = årsinkomst (högst 592 000, 0 under 14 200), `calculateDailyBenefit` = round(SGI × 0,97 × 0,8 / 365) inom 250–1 259. B1 (`infoCard1`) rättad samtidigt.
 8. ✅ Föräldralön: standard 180 dagar, två procentfält, nytt namn (A9). Räknas i kalendertid: sammanlagda kalenderdagar i perioder på sjukpenningnivå, per dag `årlig / 365 × min(dagar/vecka, 5) / 5` (`employerTopUpForRange`, används för både total och månad). B3, B12, B13 rättade samtidigt.
-9. Bryt ut den dubblerade logiken för skatt och nivåer (föräldralön redan klar) i `calculateParentBenefits` och `getMonthlyIncomeForParent` till gemensamma, testade funktioner (görs tillsammans med 4–8).
-10. Rätta avrundningen i `getDaysBetweenDates` och `monthsNeeded` (A11).
+9. ✅ Bryt ut den dubblerade logiken för skatt och nivåer. `src/utils/tax.ts` (`DEFAULT_TAX_RATE`, `calculateTax`, `afterTax`), `daysByLevel`, `calendarDaysInRange`, `benefitDaysInRange` (periodHelpers) och `fkBenefitForRange`, `dailyBenefitForLevel` (calculations). Total och månad räknas med samma funktioner. Inga belopp ändrade (referensfilen genererad före ändringen).
+10. ✅ Rätta avrundningen i `getDaysBetweenDates` (+1) och `monthsNeeded` (kalenderdagar × 12 / 365 via `leaveMonths`) (A11).
 
 **Fas 3 – ny planerare (docs/PLANERARE.md)**
 11. Layout: delad skärm på desktop (formulär vänster, sticky visualisering höger), staplat på mobil.

@@ -2,12 +2,14 @@
 
 import { Parent, ParentalPeriod, ParentBenefits, MonthlyIncomeResult } from "../types";
 import {
+  benefitDaysInRange,
   calculateDoubleDays,
+  calendarDaysInRange,
+  daysByLevel,
   getOverlaps,
   getTotalDaysFromPeriods,
   highLevelDaysBefore,
   overlapDaysFrom,
-  periodDays,
   periodEnd,
 } from "./periodHelpers";
 import {
@@ -20,11 +22,13 @@ import {
   toDayNumber,
 } from "./dates";
 import { RULES } from "../rules";
+import { afterTax, calculateTax, DEFAULT_TAX_RATE } from "./tax";
+
+// Skattefunktionerna fanns tidigare här
+export { calculateTax } from "./tax";
 
 const { sgi: SGI, benefit: BENEFIT, days: DAYS } = RULES;
 
-// A8: ska bli RULES.tax.averageMunicipalRate (32,38 %). Behålls tills skattemodulen görs.
-const DEFAULT_TAX_RATE = 0.3;
 // Lön räknas på en arbetsvecka med 5 dagar
 const WORK_DAYS_PER_WEEK = 5;
 
@@ -56,27 +60,47 @@ export const calculateDailyBenefit = (sgi: number): number => {
 };
 
 /**
- * Beräknar skatt på dagersättning
- * @param dailyBenefit - Dagersättning före skatt
- * @param taxRate - Skattesats (0-1), t.ex. 0.30 för 30%
- */
-export const calculateTax = (
-  dailyBenefit: number,
-  taxRate: number = DEFAULT_TAX_RATE
-): number => {
-  return dailyBenefit * taxRate;
-};
-
-/**
- * Räknar antal dagar mellan två datum
+ * Antal kalenderdagar från och med startDate till och med endDate (A11).
  */
 export const getDaysBetweenDates = (
   startDate: string,
   endDate: string
 ): number => {
-  // A11: saknar +1, räknar inte med både start- och slutdag.
-  return Math.abs(diffDays(startDate, endDate));
+  return Math.abs(diffDays(startDate, endDate)) + 1;
 };
+
+/** Dagersättning före skatt för en nivå: sjukpenningnivå eller lägstanivå (180 kr). */
+export const dailyBenefitForLevel = (
+  level: ParentalPeriod["level"],
+  dailyBenefit: number
+): number => (level === "high" ? dailyBenefit : BENEFIT.lowLevelDaily);
+
+/**
+ * Föräldrapenning från FK före skatt för kalenderdagarna fromDay–toDay (dagnummer,
+ * inklusive), samt antal föräldrapenningdagar per nivå i intervallet.
+ */
+export const fkBenefitForRange = (
+  periods: ParentalPeriod[],
+  dailyBenefit: number,
+  fromDay = -Infinity,
+  toDay = Infinity
+): { beforeTax: number; highDays: number; lowDays: number } =>
+  periods.reduce(
+    (sum, period) => {
+      const days = benefitDaysInRange(period, fromDay, toDay);
+      return {
+        beforeTax: sum.beforeTax + days * dailyBenefitForLevel(period.level, dailyBenefit),
+        highDays: sum.highDays + (period.level === "high" ? days : 0),
+        lowDays: sum.lowDays + (period.level === "low" ? days : 0),
+      };
+    },
+    { beforeTax: 0, highDays: 0, lowDays: 0 }
+  );
+
+/** Månader för ledigheten, räknat från datumen: kalenderdagar / genomsnittlig månad (A11). */
+export const leaveMonths = (periods: ParentalPeriod[]): number =>
+  (periods.reduce((sum, p) => sum + getDaysBetweenDates(p.start, periodEnd(p)), 0) * 12) /
+  365;
 
 /**
  * Föräldralön från arbetsgivaren per år, före skatt (A9):
@@ -147,56 +171,29 @@ export const calculateParentBenefits = (
   const sgi = calculateSGI(parent.monthlySalary);
   const dailyBenefit = calculateDailyBenefit(sgi);
 
-  // Get total days from all periods
   const totalDays = getTotalDaysFromPeriods(parent.periods);
-
   const reservedDays = DAYS.reservedPerParent;
   const transferableDays = Math.max(0, totalDays - reservedDays);
 
-  // Räkna highLevel och lowLevel dagar baserat på period.level
-  let highLevelDays = 0;
-  let lowLevelDays = 0;
-
-  for (const period of parent.periods) {
-    if (period.level === "high") {
-      highLevelDays += periodDays(period);
-    } else {
-      lowLevelDays += periodDays(period);
-    }
-  }
-
-  // Beräkna FK-ersättning före skatt
-  const fkBenefitBeforeTax =
-    highLevelDays * dailyBenefit + lowLevelDays * BENEFIT.lowLevelDaily;
-
-  // Beräkna skatt med vald skattesats
-  const tax = calculateTax(dailyBenefit, taxRate);
-
-  // Beräkna lågnivå efter skatt med samma skattesats
-  const lowLevelAfterTax = BENEFIT.lowLevelDaily * (1 - taxRate);
-
-  // FK-ersättning efter skatt
-  const fkBenefitAfterTax =
-    highLevelDays * (dailyBenefit - tax) + lowLevelDays * lowLevelAfterTax;
-
-  // Föräldralön från arbetsgivaren, baserad på lönen
+  // Föräldrapenning från FK och föräldralön från arbetsgivaren
+  const { high: highLevelDays, low: lowLevelDays } = daysByLevel(parent.periods);
+  const fkBenefitBeforeTax = fkBenefitForRange(parent.periods, dailyBenefit).beforeTax;
   const employerTopUpBeforeTax = employerTopUpForRange(parent);
 
-  // Föräldralönen beskattas med samma skattesats
-  const employerTopUpAfterTax = employerTopUpBeforeTax * (1 - taxRate);
+  const fkBenefitAfterTax = afterTax(fkBenefitBeforeTax, taxRate);
+  const employerTopUpAfterTax = afterTax(employerTopUpBeforeTax, taxRate);
 
-  // Totala ersättningar
   const totalBenefitBeforeTax = fkBenefitBeforeTax + employerTopUpBeforeTax;
   const totalBenefitAfterTax = fkBenefitAfterTax + employerTopUpAfterTax;
 
   const weeksNeeded = parent.periods.reduce((sum, p) => sum + p.weeks, 0);
-
   const avgDailyBenefit = totalDays > 0 ? totalBenefitAfterTax / totalDays : 0;
+  const tax = calculateTax(dailyBenefit, taxRate);
 
   return {
     sgi,
     dailyBenefit,
-    dailyBenefitAfterTax: dailyBenefit - tax,
+    dailyBenefitAfterTax: afterTax(dailyBenefit, taxRate),
     highLevelDays,
     lowLevelDays,
     reservedDays,
@@ -207,7 +204,7 @@ export const calculateParentBenefits = (
     totalBenefitBeforeTax,
     totalBenefitAfterTax,
     weeksNeeded,
-    monthsNeeded: weeksNeeded / 4.33,
+    monthsNeeded: leaveMonths(parent.periods),
     avgDailyBenefit,
     tax,
   };
@@ -228,68 +225,43 @@ export const getMonthlyIncomeForParent = (
 
   let totalDaysThisMonth = 0;
   let workedDaysOnLeave = 0; // Arbetade dagar under lediga kalenderdagar (A2)
-  let totalIncomeThisMonth = 0;
-  let highLevelDaysThisMonth = 0;
-  let lowLevelDaysThisMonth = 0; // För visuell indikering
 
-  // Loop through all periods to see if any fall within this month
   for (const period of parent.periods) {
-    const startDay = toDayNumber(period.start);
-    const endDay = toDayNumber(periodEnd(period));
+    const calendarDays = calendarDaysInRange(period, monthStart, monthEnd);
+    totalDaysThisMonth += calendarDays;
 
-    // If period overlaps with this month
-    if (!(monthStart > endDay || monthEnd < startDay)) {
-      // Calculate days in this month for this period (both start and end day included)
-      const overlapStart = Math.max(monthStart, startDay);
-      const overlapEnd = Math.min(monthEnd, endDay);
-      const overlapDays = overlapEnd - overlapStart + 1;
-
-      totalDaysThisMonth += overlapDays;
-      // A2: jobbar man de andra dagarna (5-dagarsvecka) får man lön för dem, t.ex. 2/5 vid
-      // 3 dagar/vecka. Är man helt ledig och tar ut färre dagar är resten obetalda.
-      if (period.worksOtherDays) {
-        workedDaysOnLeave +=
-          (overlapDays * Math.max(0, WORK_DAYS_PER_WEEK - period.daysPerWeek)) /
-          WORK_DAYS_PER_WEEK;
-      }
-
-      // Calculate income based on period level (high/low)
-      let dailyBenefitAfterTax: number;
-      const effectiveDays = period.daysPerWeek * (overlapDays / 7);
-
-      if (period.level === "low") {
-        // Lägstanivå: 180 kr/dag efter skatt
-        dailyBenefitAfterTax = BENEFIT.lowLevelDaily * (1 - taxRate);
-        lowLevelDaysThisMonth += effectiveDays;
-      } else {
-        // Sjukpenningnivå: använd benefits.dailyBenefitAfterTax
-        dailyBenefitAfterTax = benefits.dailyBenefitAfterTax;
-        highLevelDaysThisMonth += effectiveDays;
-      }
-
-      // Beräkna inkomst för denna period
-      const incomeForPeriod =
-        dailyBenefitAfterTax * period.daysPerWeek * (overlapDays / 7);
-      totalIncomeThisMonth += incomeForPeriod;
+    // A2: jobbar man de andra dagarna (5-dagarsvecka) får man lön för dem, t.ex. 2/5 vid
+    // 3 dagar/vecka. Är man helt ledig och tar ut färre dagar är resten obetalda.
+    if (period.worksOtherDays) {
+      workedDaysOnLeave +=
+        (calendarDays * Math.max(0, WORK_DAYS_PER_WEEK - period.daysPerWeek)) /
+        WORK_DAYS_PER_WEEK;
     }
   }
 
-  // Föräldralön från arbetsgivaren för månadens kalenderdagar
-  totalIncomeThisMonth += employerTopUpForRange(parent, monthStart, monthEnd) * (1 - taxRate);
+  // Föräldrapenning och föräldralön för månadens kalenderdagar
+  const fk = fkBenefitForRange(parent.periods, benefits.dailyBenefit, monthStart, monthEnd);
+  const leaveIncome = afterTax(
+    fk.beforeTax + employerTopUpForRange(parent, monthStart, monthEnd),
+    taxRate
+  );
 
   // Lön för dagar utan ledighet och för arbetade dagar under deltidsledighet
   const daysInFullMonth = monthEnd - monthStart + 1;
   const workedDays = daysInFullMonth - totalDaysThisMonth + workedDaysOnLeave;
   const workRatio = Math.min(1, Math.max(0, workedDays / daysInFullMonth));
-  const workIncome = parent.monthlySalary * (1 - taxRate) * workRatio;
+  const workIncome = afterTax(parent.monthlySalary, taxRate) * workRatio;
 
   return {
-    total: workIncome + totalIncomeThisMonth,
+    total: workIncome + leaveIncome,
     days: totalDaysThisMonth,
-    highDays: highLevelDaysThisMonth,
-    lowDays: lowLevelDaysThisMonth,
+    highDays: fk.highDays,
+    lowDays: fk.lowDays,
   };
 };
+
+const activePeriods = (parents: Parent[], numParents: 1 | 2): ParentalPeriod[] =>
+  parents.slice(0, numParents).flatMap((parent) => parent?.periods ?? []);
 
 /**
  * VALIDERING: Kontrollera totala dagar för båda föräldrar
@@ -338,18 +310,9 @@ export const validateLevelDays = (
   numParents: 1 | 2
 ): DaysValidation => {
   const warnings: string[] = [];
-  let highLevelDays = 0;
-  let lowLevelDays = 0;
-
-  for (const parent of parents.slice(0, numParents)) {
-    for (const period of parent?.periods ?? []) {
-      if (period.level === "high") {
-        highLevelDays += periodDays(period);
-      } else {
-        lowLevelDays += periodDays(period);
-      }
-    }
-  }
+  const { high: highLevelDays, low: lowLevelDays } = daysByLevel(
+    activePeriods(parents, numParents)
+  );
 
   const exceededHigh = Math.max(0, highLevelDays - DAYS.highLevelTotal);
   const exceededLow = Math.max(0, lowLevelDays - DAYS.lowLevelTotal);
@@ -376,11 +339,6 @@ export const validateLevelDays = (
   };
 };
 
-const activePeriods = (parents: Parent[], numParents: 1 | 2): ParentalPeriod[] =>
-  parents.slice(0, numParents).flatMap((parent) => parent?.periods ?? []);
-
-const highDaysOf = (parent: Parent): number =>
-  getTotalDaysFromPeriods(parent.periods.filter((p) => p.level === "high"));
 
 /**
  * VALIDERING: Reserverade dagar och överföring mellan föräldrarna.
@@ -415,7 +373,7 @@ export const validateReservedDays = (
 
     const reservedUsed = Math.min(
       DAYS.reservedPerParent,
-      Math.max(0, highDaysOf(parent) - doubleDays)
+      Math.max(0, daysByLevel(parent.periods).high - doubleDays)
     );
     const lost = DAYS.reservedPerParent - reservedUsed;
 
@@ -469,7 +427,7 @@ export const validateLowLevelDaysRule = (
 
   return {
     isValid: warnings.length === 0,
-    totalDays: getTotalDaysFromPeriods(periods.filter((p) => p.level === "high")),
+    totalDays: daysByLevel(periods).high,
     exceededDays: 0,
     warnings,
   };
