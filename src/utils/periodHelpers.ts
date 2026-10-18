@@ -122,6 +122,35 @@ export const validateNoOverlap = (
   return { valid: true };
 };
 
+export interface PreviousOverlap {
+  /** Sista dagen i förälderns föregående period */
+  previousEnd: string;
+  /** Dagen efter föregående period, dit perioden kan flyttas */
+  moveTo: string;
+}
+
+/**
+ * Perioder som börjar på eller före slutet av förälderns föregående period (sorterat
+ * efter start). Nyckel: periodens id.
+ */
+export const findPreviousOverlaps = (
+  periods: ParentalPeriod[]
+): Record<string, PreviousOverlap> => {
+  const sorted = [...periods].sort((a, b) => toDayNumber(a.start) - toDayNumber(b.start));
+  const result: Record<string, PreviousOverlap> = {};
+
+  sorted.forEach((period, i) => {
+    const previous = sorted[i - 1];
+    if (!previous) return;
+    const previousEnd = periodEnd(previous);
+    if (toDayNumber(period.start) <= toDayNumber(previousEnd)) {
+      result[period.id] = { previousEnd, moveTo: addDays(previousEnd, 1) };
+    }
+  });
+
+  return result;
+};
+
 export interface PeriodOverlap {
   start: string;
   end: string;

@@ -127,7 +127,8 @@ export const usePlan = (): Plan => {
           ...p.periods,
           {
             id: generatePeriodId(),
-            start: nextFreeStart(p.periods),
+            // Utan perioder börjar den nya vid födseln
+            start: p.periods.length ? nextFreeStart(p.periods) : birthDate,
             weeks: 6,
             daysPerWeek: 5,
             level: "high",

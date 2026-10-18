@@ -90,4 +90,14 @@ describe("usePlan", () => {
     act(() => result.current.loadExample("maxTime"));
     expect(result.current.planSource).toBe("manual");
   });
+
+  test("addPeriod utan perioder börjar på födelsedatumet", () => {
+    const { result } = renderHook(() => usePlan());
+    const empty = result.current.parents.map((p) => ({ ...p, periods: [] }));
+
+    act(() => result.current.applyQuickStart(2, "2026-05-01", empty));
+    act(() => result.current.addPeriod(empty[0].id));
+
+    expect(result.current.parents[0].periods[0].start).toBe("2026-05-01");
+  });
 });

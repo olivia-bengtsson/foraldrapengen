@@ -113,6 +113,9 @@ Datumsträngar som `"2026-03-15"` tolkas av `new Date(...)` som midnatt UTC, med
 `validateLowLevelDaysRule` jämför bara totalsumman av sjukpenningdagar med 180. En plan där lägstanivådagarna ligger först godkänns alltså om totalen räcker.
 Åtgärd: för varje period på lägstanivå, räkna sjukpenningdagar som tagits ut före periodens start (`highLevelDaysBefore`, pågående perioder med andelen före datumet). Färre än 180 gör planen ogiltig. Gäller även lägstanivådagar som tas ut som dubbeldagar (A5).
 
+### A17. SGI för arbetslösa och egenföretagare (utreds senare)
+SGI räknas i dag från månadslönen för alla anställningsformer (`calculateSGI`). För arbetslösa och egenföretagare gäller andra regler för hur SGI fastställs och skyddas. Det ska utredas mot Försäkringskassan innan beräkningen ändras. Planeraren visar redan att föräldralön från arbetsgivaren bara gäller anställda.
+
 ---
 
 ## 3. Felaktig eller inaktuell text (B)

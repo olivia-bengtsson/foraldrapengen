@@ -1,8 +1,12 @@
 // Snabbstart-svaren och hur de förs över till planen. Ligger i Planner så att svaren
 // finns kvar när man byter flik.
+//
+// Antal föräldrar, födelsedatum, lön och föräldralön läses alltid från planen, så att
+// ändringar i Detaljerad plan syns här. Bara Snabbstarts egna val sparas separat.
 
 import { useState } from "react";
 import { Plan } from "../../hooks/usePlan";
+import { Parent } from "../../types";
 import {
   answersFromPlan,
   generatePlan,
@@ -11,6 +15,8 @@ import {
   QuickStartPresetKey,
   topUpFields,
 } from "../../utils/planGenerator";
+
+type OwnAnswers = Pick<QuickStartAnswers, "first" | "months" | "daysPerWeek" | "togetherWeeks">;
 
 export interface QuickStart {
   answers: QuickStartAnswers;
@@ -24,11 +30,27 @@ export interface QuickStart {
   changeTopUp: (index: 0 | 1, enabled: boolean) => void;
 }
 
+const hasTopUp = (parent: Parent) =>
+  parent.topUpUnderCeilingPercent > 0 || parent.topUpOverCeilingPercent > 0;
+
 export const useQuickStart = (plan: Plan): QuickStart => {
-  const [answers, setAnswers] = useState<QuickStartAnswers>(() =>
-    answersFromPlan(plan.parents, plan.numParents, plan.birthDate)
-  );
+  const [own, setOwn] = useState<OwnAnswers>(() => {
+    const { first, months, daysPerWeek, togetherWeeks } = answersFromPlan(
+      plan.parents,
+      plan.numParents,
+      plan.birthDate
+    );
+    return { first, months, daysPerWeek, togetherWeeks };
+  });
   const [pendingOverwrite, setPendingOverwrite] = useState(false);
+
+  const answers: QuickStartAnswers = {
+    ...own,
+    numParents: plan.numParents,
+    birthDate: plan.birthDate,
+    salaries: [plan.parents[0].monthlySalary, plan.parents[1].monthlySalary],
+    topUp: [hasTopUp(plan.parents[0]), hasTopUp(plan.parents[1])],
+  };
 
   const apply = (next: QuickStartAnswers) => {
     plan.applyQuickStart(next.numParents, next.birthDate, generatePlan(next, plan.parents));
@@ -37,32 +59,28 @@ export const useQuickStart = (plan: Plan): QuickStart => {
 
   const changePeriods = (patch: Partial<QuickStartAnswers>) => {
     const next = { ...answers, ...patch };
-    setAnswers(next);
-    if (plan.planSource === "manual") setPendingOverwrite(true);
-    else apply(next);
+    const { first, months, daysPerWeek, togetherWeeks } = next;
+    setOwn({ first, months, daysPerWeek, togetherWeeks });
+
+    if (plan.planSource === "manual") {
+      // Antal föräldrar och födelsedatum flyttar inga perioder och kan sättas direkt
+      if (patch.numParents) plan.setNumParents(patch.numParents);
+      if (patch.birthDate) plan.setBirthDate(patch.birthDate);
+      setPendingOverwrite(true);
+    } else {
+      apply(next);
+    }
   };
 
   return {
     answers,
     pendingOverwrite,
     changePeriods,
-    // Ett förval är ett aktivt val, så det skriver över direkt
-    applyPreset: (key) => {
-      const next = { ...answers, ...QUICK_START_PRESETS[key] };
-      setAnswers(next);
-      apply(next);
-    },
+    applyPreset: (key) => changePeriods(QUICK_START_PRESETS[key]),
     applySuggestion: () => apply(answers),
-    changeSalary: (index, salary) => {
-      const salaries: [number, number] = [...answers.salaries];
-      salaries[index] = salary;
-      setAnswers({ ...answers, salaries });
-      plan.updateParent(plan.parents[index].id, "monthlySalary", salary);
-    },
+    changeSalary: (index, salary) =>
+      plan.updateParent(plan.parents[index].id, "monthlySalary", salary),
     changeTopUp: (index, enabled) => {
-      const topUp: [boolean, boolean] = [...answers.topUp];
-      topUp[index] = enabled;
-      setAnswers({ ...answers, topUp });
       const fields = topUpFields(enabled);
       const id = plan.parents[index].id;
       plan.updateParent(id, "topUpUnderCeilingPercent", fields.topUpUnderCeilingPercent);

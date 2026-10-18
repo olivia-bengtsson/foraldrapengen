@@ -1,6 +1,7 @@
 import { Parent, ParentalPeriod } from "../types";
 import { toDayNumber } from "./dates";
 import {
+  findPreviousOverlaps,
   benefitDaysInRange,
   calculateDoubleDays,
   calendarDaysInRange,
@@ -248,5 +249,35 @@ describe("calendarDaysInRange / benefitDaysInRange", () => {
   test("utanför perioden", () => {
     const day = toDayNumber("2026-04-01");
     expect(calendarDaysInRange(period, day, day + 10)).toBe(0);
+  });
+});
+
+describe("findPreviousOverlaps", () => {
+  test("perioder dag efter dag överlappar inte", () => {
+    const periods = [
+      makePeriod({ id: "a", start: "2026-03-02", weeks: 2 }),
+      makePeriod({ id: "b", start: "2026-03-16", weeks: 2 }),
+    ];
+    expect(findPreviousOverlaps(periods)).toEqual({});
+  });
+
+  test("start på föregående periods sista dag överlappar, moveTo är dagen efter", () => {
+    const periods = [
+      makePeriod({ id: "a", start: "2026-03-02", weeks: 2 }), // slutar 15 mars
+      makePeriod({ id: "b", start: "2026-03-15", weeks: 2 }),
+    ];
+    expect(findPreviousOverlaps(periods)).toEqual({
+      b: { previousEnd: "2026-03-15", moveTo: "2026-03-16" },
+    });
+  });
+
+  test("osorterade perioder jämförs i tidsordning", () => {
+    const periods = [
+      makePeriod({ id: "late", start: "2026-04-01", weeks: 2 }),
+      makePeriod({ id: "early", start: "2026-03-02", weeks: 6 }), // slutar 12 april
+    ];
+    expect(findPreviousOverlaps(periods)).toEqual({
+      late: { previousEnd: "2026-04-12", moveTo: "2026-04-13" },
+    });
   });
 });

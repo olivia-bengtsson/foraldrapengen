@@ -124,7 +124,6 @@ export interface Translations {
   plannerTabsLabel: string;
   plannerTabQuick: string;
   plannerTabDetailed: string;
-  plannerComingSoon: string;
   plannerPlanHeading: string;
 
   // Quick start
@@ -152,6 +151,23 @@ export interface Translations {
   qsOverwriteNotice: string;
   qsOverwriteApply: string;
   qsToDetailed: string;
+
+  // Detailed plan
+  dpNameLabel: string;
+  dpEmployment: string;
+  dpEmployed: string;
+  dpSelfEmployed: string;
+  dpUnemployed: string;
+  dpTopUpOnlyEmployed: string;
+  dpLevel: string;
+  dpLevelHigh: string;
+  dpLevelLow: string;
+  dpAddPeriod: string;
+  dpRemovePeriod: string;
+  dpOverlap: string;
+  dpMoveStart: string;
+  dpNoPeriods: string;
+  dpPeriodLabel: string;
 
   // Footer
   disclaimerText: string;
@@ -316,7 +332,6 @@ export const translations: Record<Language, Translations> = {
     plannerTabsLabel: "Sätt att planera",
     plannerTabQuick: "Snabbstart",
     plannerTabDetailed: "Detaljerad plan",
-    plannerComingSoon: "Den här delen byggs i nästa steg.",
     plannerPlanHeading: "Er plan",
 
     // Quick start
@@ -344,6 +359,23 @@ export const translations: Record<Language, Translations> = {
     qsOverwriteNotice: "Du har ändrat perioderna i Detaljerad plan. Förslaget från Snabbstart skriver över dem.",
     qsOverwriteApply: "Använd förslaget",
     qsToDetailed: "Finjustera perioderna →",
+
+    // Detailed plan
+    dpNameLabel: "Namn",
+    dpEmployment: "Anställningsform",
+    dpEmployed: "Anställd",
+    dpSelfEmployed: "Egenföretagare",
+    dpUnemployed: "Arbetslös",
+    dpTopUpOnlyEmployed: "Föräldralön från arbetsgivaren gäller bara anställda.",
+    dpLevel: "Nivå",
+    dpLevelHigh: "Sjukpenningnivå (ca 80 %)",
+    dpLevelLow: "Lägstanivå ({amount} kr/dag)",
+    dpAddPeriod: "+ Lägg till period från {date}",
+    dpRemovePeriod: "Ta bort",
+    dpOverlap: "Överlappar föregående period, som slutar {date}.",
+    dpMoveStart: "Flytta start till {date}",
+    dpNoPeriods: "Inga perioder ännu.",
+    dpPeriodLabel: "Period {number}",
 
     // Footer
     disclaimerText:
@@ -496,7 +528,6 @@ export const translations: Record<Language, Translations> = {
     plannerTabsLabel: "Ways to plan",
     plannerTabQuick: "Quick start",
     plannerTabDetailed: "Detailed plan",
-    plannerComingSoon: "This part is built in the next step.",
     plannerPlanHeading: "Your plan",
 
     // Quick start
@@ -524,6 +555,23 @@ export const translations: Record<Language, Translations> = {
     qsOverwriteNotice: "You have changed the periods in the detailed plan. The quick start suggestion will overwrite them.",
     qsOverwriteApply: "Use the suggestion",
     qsToDetailed: "Fine-tune the periods →",
+
+    // Detailed plan
+    dpNameLabel: "Name",
+    dpEmployment: "Employment",
+    dpEmployed: "Employed",
+    dpSelfEmployed: "Self-employed",
+    dpUnemployed: "Unemployed",
+    dpTopUpOnlyEmployed: "Parental pay from an employer only applies to employees.",
+    dpLevel: "Level",
+    dpLevelHigh: "Sickness benefit level (about 80%)",
+    dpLevelLow: "Minimum level ({amount} SEK/day)",
+    dpAddPeriod: "+ Add period from {date}",
+    dpRemovePeriod: "Remove",
+    dpOverlap: "Overlaps the previous period, which ends {date}.",
+    dpMoveStart: "Move start to {date}",
+    dpNoPeriods: "No periods yet.",
+    dpPeriodLabel: "Period {number}",
 
     // Footer
     disclaimerText:

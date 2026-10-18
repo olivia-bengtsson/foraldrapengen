@@ -10,6 +10,7 @@ import PlannerLayout from "./PlannerLayout";
 import PlannerTabs from "./PlannerTabs";
 import { plannerUrl } from "./plannerFlag";
 import QuickStart from "./QuickStart";
+import DetailedPlan from "./DetailedPlan";
 import { useQuickStart } from "./useQuickStart";
 
 type PlannerTabId = "quick" | "detailed";
@@ -63,9 +64,7 @@ const Planner: React.FC<{ plan: Plan }> = ({ plan }) => {
                 onFineTune={() => setTab("detailed")}
               />
             ) : (
-              <Panel>
-                <p className="text-sm text-gray-600">{t.plannerComingSoon}</p>
-              </Panel>
+              <DetailedPlan plan={plan} />
             )}
           </PlannerTabs>
         }

@@ -53,9 +53,9 @@ Frågor i den här ordningen. Svaren genererar planen live:
 
 Knappen "Finjustera perioderna →" byter till Detaljerad plan.
 
-**Förval** överst: "Dela lika" (9 + 9 mån, 5 d/v, 2 veckor tillsammans), "Så länge som möjligt" (11 + 11 mån, 5 d/v, alla 480 dagar) och "Mer pengar per månad" (6 + 6 mån, 7 d/v). Ett förval är ett aktivt val och skriver över planen direkt. Förvalen ersätter exempelfliken.
+**Förval** överst: "Dela lika" (9 + 9 mån, 5 d/v, 2 veckor tillsammans), "Så länge som möjligt" (11 + 11 mån, 5 d/v, alla 480 dagar) och "Mer pengar per månad" (6 + 6 mån, 7 d/v). Förvalen följer samma skydd mot överskrivning som övriga svar. Förvalen ersätter exempelfliken.
 
-Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromPlan`). Planen ändras först när ett svar ändras. Lön och föräldralön uppdaterar bara föräldern, inte perioderna.
+Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromPlan`). Planen ändras först när ett svar ändras. Antal föräldrar, födelsedatum, lön och föräldralön läses alltid från planen (samma värden som i Detaljerad plan); lön och föräldralön uppdaterar bara föräldern, inte perioderna.
 
 **Generering** (ren funktion i `src/utils/`, med tester):
 - Tillsammans-perioden läggs på föräldern som börjar *sedan*, från födseln, 5 dagar/vecka.
@@ -67,13 +67,16 @@ Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromP
 - Den andra föräldern börjar aldrig under sin egen tillsammans-period (om den första är hemma kortare än tillsammans-tiden).
 
 ## Detaljerad plan
-- Ett kort per förälder med redigerbart namn och föräldrapenningnivå. Lön och föräldralön kan visas här också.
+- Överst: barnets födelsedatum.
+- Ett kort per förälder med redigerbart namn, anställningsform, lön och föräldralön från arbetsgivaren (tre fält, bara för anställda; andra ser "gäller bara anställda").
 - Varje period: startdatum, längd i veckor med ungefärligt antal månader bredvid ("18 veckor ≈ 4 mån", `monthsFromWeeks`), dagar/vecka (1–7), nivå (sjukpenningnivå / lägstanivå). Under fälten: "1 mar 2026 – 28 nov 2026 · 39 veckor · 195 dagar".
 - Vid färre än 5 dagar/vecka: frågan **"Jobbar du de andra dagarna?"** (Nej / Ja, fältet `worksOtherDays`, standard Nej). Ja = lön för `(5 − dagar/vecka) / 5` av veckan. Nej = helt ledig, de andra dagarna är obetalda (A2).
 - Varning (gör inte planen ogiltig): en period på eller efter barnets ettårsdag med färre än 5 dagar/vecka och "Nej" ger texten "Efter barnets ettårsdag behöver du ta ut föräldrapenning minst 5 hela dagar i veckan om du är helt ledig. Annars förlorar du din SGI, som styr din sjukpenning och föräldrapenning." (B4)
 - **+ Lägg till period från {datum}:** ny period startar dagen efter förälderns sista period.
 - Startdatum får inte vara före födseln (`min`).
-- Överlapp med egen föregående period: ingen röd ruta, utan en rad med knappen "Flytta start till {datum}".
+- Överlapp med egen föregående period: ingen röd ruta, utan en rad med knappen "Flytta start till {datum}" (`findPreviousOverlaps`).
+- Utan perioder börjar "Lägg till period" vid födseln.
+- Varje periodrad har `id="period-{id}"` så att tidslinjen kan scrolla dit.
 - Hovra en period → motsvarande block på tidslinjen markeras.
 
 ## Höger kolumn
