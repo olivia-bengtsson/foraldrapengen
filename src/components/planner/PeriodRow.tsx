@@ -11,6 +11,7 @@ import {
   PreviousOverlap,
 } from "../../utils/periodHelpers";
 import SegmentedControl from "./SegmentedControl";
+import { HIGHLIGHT_RING, useHighlight } from "./HighlightContext";
 
 interface PeriodRowProps {
   period: ParentalPeriod;
@@ -42,13 +43,19 @@ const PeriodRow: React.FC<PeriodRowProps> = ({
   onDelete,
 }) => {
   const { t, language } = useLanguage();
+  const { highlighted, setHighlighted } = useHighlight();
   const locale = locales[language];
   const worksId = `works-${period.id}`;
 
   return (
     <div
       id={`period-${period.id}`}
-      className={`grid gap-3 rounded-lg border border-gray-200 border-l-4 ${borderClass} bg-gray-50 p-3`}
+      onMouseEnter={() => setHighlighted(period.id)}
+      onMouseLeave={() => setHighlighted(null)}
+      onFocus={() => setHighlighted(period.id)}
+      className={`grid gap-3 rounded-lg border border-gray-200 border-l-4 ${borderClass} bg-gray-50 p-3 scroll-mt-4 ${
+        highlighted === period.id ? HIGHLIGHT_RING : ""
+      }`}
     >
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-gray-800">

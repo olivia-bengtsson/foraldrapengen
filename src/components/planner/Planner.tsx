@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Baby } from "lucide-react";
 import { Plan } from "../../hooks/usePlan";
 import { useLanguage } from "../../i18n/LanguageContext";
@@ -11,6 +11,8 @@ import PlannerTabs from "./PlannerTabs";
 import { plannerUrl } from "./plannerFlag";
 import QuickStart from "./QuickStart";
 import DetailedPlan from "./DetailedPlan";
+import PlanTimeline from "./PlanTimeline";
+import { HighlightProvider, useHighlight } from "./HighlightContext";
 import { useQuickStart } from "./useQuickStart";
 
 type PlannerTabId = "quick" | "detailed";
@@ -20,10 +22,38 @@ const Panel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 /** Den nya planeraren (docs/PLANERARE.md). Byggs steg för steg i Fas 3. */
-const Planner: React.FC<{ plan: Plan }> = ({ plan }) => {
+const Planner: React.FC<{ plan: Plan }> = ({ plan }) => (
+  <HighlightProvider>
+    <PlannerContent plan={plan} />
+  </HighlightProvider>
+);
+
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const PlannerContent: React.FC<{ plan: Plan }> = ({ plan }) => {
   const { t } = useLanguage();
   const [tab, setTab] = useState<PlannerTabId>("quick");
   const quickStart = useQuickStart(plan);
+  const { setHighlighted } = useHighlight();
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
+
+  // Klick på ett block i tidslinjen: visa perioden i Detaljerad plan
+  const selectPeriod = (periodId: string) => {
+    setTab("detailed");
+    setHighlighted(periodId);
+    setScrollTarget(periodId);
+  };
+
+  useEffect(() => {
+    if (tab !== "detailed" || !scrollTarget) return;
+    document.getElementById(`period-${scrollTarget}`)?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "center",
+    });
+    setScrollTarget(null);
+  }, [tab, scrollTarget]);
 
   const totalAfterTax = plan.parentResults.reduce((sum, r) => sum + r.totalBenefitAfterTax, 0);
   const totalBeforeTax = plan.parentResults.reduce((sum, r) => sum + r.totalBenefitBeforeTax, 0);
@@ -70,6 +100,7 @@ const Planner: React.FC<{ plan: Plan }> = ({ plan }) => {
         }
         visualization={
           <>
+            <PlanTimeline plan={plan} onSelectPeriod={selectPeriod} />
             <ValidationWarnings warnings={plan.validation.allWarnings} />
             <Panel>
               <h2 className="text-lg font-semibold text-green-900 mb-3">

@@ -91,3 +91,12 @@ export const addMonths = (date: string, months: number): string => {
 /** Lägger till år. Barn födda 29 februari fyller år 28 februari vanliga år. */
 export const addYears = (date: string, years: number): string =>
   addMonths(date, years * 12);
+
+/** Kort månadsnamn, t.ex. "mars" eller "mars 27" med år. Tidszonen påverkar inte. */
+export const formatMonth = (date: string, locale: string, withYear = false): string => {
+  const day = toDayNumber(date);
+  if (isNaN(day)) return "";
+  const d = new Date(day * MS_PER_DAY);
+  const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(d);
+  return withYear ? `${month} ${String(d.getUTCFullYear()).slice(2)}` : month;
+};

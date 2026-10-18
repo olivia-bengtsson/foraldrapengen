@@ -169,6 +169,33 @@ export interface Translations {
   dpNoPeriods: string;
   dpPeriodLabel: string;
 
+  // Timeline
+  tlHeading: string;
+  tlTogether: string;
+  tlCoverage: string;
+  tlBirth: string;
+  tlLegendHigh: string;
+  tlLegendLow: string;
+  tlLegendPart: string;
+  tlLegendDouble: string;
+  tlLegendDoubleLate: string;
+  tlLegendPartial: string;
+  tlLegendGap: string;
+  tlLegendOneYear: string;
+  tlLegendFifteen: string;
+  tlBlockLabel: string;
+  tlLevelHigh: string;
+  tlBlockDays: string;
+  tlLevelLow: string;
+  tlDoubleTitle: string;
+  tlDoubleLateTitle: string;
+  tlGapTitle: string;
+  tlPartialTitle: string;
+  tlGapOne: string;
+  tlGapMany: string;
+  tlPartialSummary: string;
+  tlNoPeriods: string;
+
   // Footer
   disclaimerText: string;
   privacyFooterText: string;
@@ -377,6 +404,33 @@ export const translations: Record<Language, Translations> = {
     dpNoPeriods: "Inga perioder ännu.",
     dpPeriodLabel: "Period {number}",
 
+    // Timeline
+    tlHeading: "Tidslinje från barnets födelse",
+    tlTogether: "Tillsammans",
+    tlCoverage: "Någon hemma",
+    tlBirth: "Födsel",
+    tlLegendHigh: "Sjukpenningnivå",
+    tlLegendLow: "Lägstanivå",
+    tlLegendPart: "Färre än 5 dagar/vecka",
+    tlLegendDouble: "Dubbeldagar",
+    tlLegendDoubleLate: "Dubbeldagar efter 15 mån",
+    tlLegendPartial: "Delvis täckt: föräldern jobbar övriga dagar",
+    tlLegendGap: "Lucka",
+    tlLegendOneYear: "1 år",
+    tlLegendFifteen: "15 mån",
+    tlBlockLabel: "{name}: {start} – {end}, {days} dagar/vecka, {level}",
+    tlLevelHigh: "sjukpenningnivå",
+    tlBlockDays: "{days} d/v",
+    tlLevelLow: "lägstanivå",
+    tlDoubleTitle: "{days} dubbeldagar, {start} – {end}",
+    tlDoubleLateTitle: "{days} dubbeldagar efter 15 månader, {start} – {end}",
+    tlGapTitle: "Ingen hemma {start} – {end}",
+    tlPartialTitle: "Delvis täckt {start} – {end}",
+    tlGapOne: "En lucka där ingen är hemma, från {date}.",
+    tlGapMany: "{count} luckor där ingen är hemma, den första från {date}.",
+    tlPartialSummary: "Delvis täckt i {weeks} veckor (första gången från {date}), när föräldern jobbar övriga dagar.",
+    tlNoPeriods: "Lägg till perioder för att se tidslinjen.",
+
     // Footer
     disclaimerText:
       "Beräkningarna är vägledande. Kontakta Försäkringskassan för exakta uppgifter.",
@@ -572,6 +626,33 @@ export const translations: Record<Language, Translations> = {
     dpMoveStart: "Move start to {date}",
     dpNoPeriods: "No periods yet.",
     dpPeriodLabel: "Period {number}",
+
+    // Timeline
+    tlHeading: "Timeline from the child's birth",
+    tlTogether: "Together",
+    tlCoverage: "Someone at home",
+    tlBirth: "Birth",
+    tlLegendHigh: "Sickness benefit level",
+    tlLegendLow: "Minimum level",
+    tlLegendPart: "Fewer than 5 days/week",
+    tlLegendDouble: "Double days",
+    tlLegendDoubleLate: "Double days after 15 months",
+    tlLegendPartial: "Partly covered: the parent works the other days",
+    tlLegendGap: "Gap",
+    tlLegendOneYear: "1 year",
+    tlLegendFifteen: "15 months",
+    tlBlockLabel: "{name}: {start} – {end}, {days} days/week, {level}",
+    tlLevelHigh: "sickness benefit level",
+    tlBlockDays: "{days} d/w",
+    tlLevelLow: "minimum level",
+    tlDoubleTitle: "{days} double days, {start} – {end}",
+    tlDoubleLateTitle: "{days} double days after 15 months, {start} – {end}",
+    tlGapTitle: "No one at home {start} – {end}",
+    tlPartialTitle: "Partly covered {start} – {end}",
+    tlGapOne: "One gap where no one is at home, from {date}.",
+    tlGapMany: "{count} gaps where no one is at home, the first from {date}.",
+    tlPartialSummary: "Partly covered for {weeks} weeks (first from {date}), when the parent works the other days.",
+    tlNoPeriods: "Add periods to see the timeline.",
 
     // Footer
     disclaimerText:

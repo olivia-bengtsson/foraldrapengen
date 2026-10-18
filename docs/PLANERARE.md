@@ -83,7 +83,7 @@ Svaren fylls i från den nuvarande planen när planeraren öppnas (`answersFromP
 1. **Tidslinje**: en rad per förälder från födseln, 18–30 månader beroende på planen.
    - Block i förälderns färg. Lägstanivå randig. Färre än 5 dagar/vecka ljusare.
    - Raden **Tillsammans** visar överlapp (dubbeldagar). Överlapp efter 15 månader i varningsfärg.
-   - Raden **Någon hemma** visar täckning och **luckor** där ingen är hemma.
+   - Raden **Någon hemma** visar täckning och **luckor** där ingen är hemma. Perioder med färre än 5 dagar/vecka där föräldern jobbar övriga dagar (`worksOtherDays = true`) visas som **delvis täckta** (eget mönster, förklaring i teckenförklaringen), om inte den andra föräldern är hemma samtidigt. Är föräldern helt ledig (`worksOtherDays = false`) räknas det som full täckning. Två delvis täckta perioder samtidigt räknas som delvis, eftersom planen inte vet vilka veckodagar var och en jobbar (`coverageSegments` i `src/utils/timeline.ts`).
    - Markeringar vid 1 år och 15 månader.
    - Antalet etiketter på axeln anpassas till bredden.
    - Klick på ett block → byt till Detaljerad plan och scrolla till perioden.
