@@ -10,7 +10,7 @@ Föräldrapengen (foraldrapengen.se) är en gratis kalkylator som hjälper för�
 
 ## Teknik
 - React 19 + TypeScript, Create React App (react-scripts 5).
-- Tailwind laddas just nu via CDN i public/index.html (ska flyttas till byggsteget).
+- Tailwind 3 via PostCSS (CRA 5), konfiguration i `tailwind.config.js`. Färgerna `green`, `yellow` och `purple` är mappade till Tailwind 2:s palett (emerald, amber, violet) och skuggorna till Tailwind 2:s värden, så att sajten ser ut som förut. Sajtens gröna är alltså `green-*` (= emerald). Skriv alltid hela klassnamn (inga `bg-${färg}-100`), annars genereras de inte.
 - Ikoner: lucide-react.
 
 ## Hur du ska arbeta
@@ -76,7 +76,7 @@ Hänvisningarna (A1, B3 …) pekar på docs/GRANSKNING-2026.md. Den nya planerar
 
 **Fas 6 – kodkvalitet och teknik**
 25. Typsäkra uppdateringsfunktionerna med generics (`keyof`).
-26. Installera Tailwind via PostCSS i stället för CDN.
+26. ✅ Installera Tailwind via PostCSS i stället för CDN (gjort före Fas 3).
 27. Längre fram: migrera från Create React App till Vite.
 
 ## Varje år (januari)

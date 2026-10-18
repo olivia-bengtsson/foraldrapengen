@@ -5,6 +5,9 @@ Den här filen beskriver det nya planeringsflödet. Den klickbara skissen ligger
 ## Varför
 Dagens formulär kräver att man redan kan reglerna. Man väljer exakta datum, räknar dagar själv och ser fel först när något blir rött. Förstagångsföräldrar tänker i stället "jag är hemma första halvåret, sen tar du över". Planeraren ska översätta det till dagar, datum och pengar och visa resultatet direkt.
 
+## Färger
+Använd sajtens färger via Tailwind: grönt är `green-*` (mappat till Tailwind 2:s emerald i `tailwind.config.js`), inte skissens nyans. Förälder 2 kan använda `indigo-*` (samma som theme-color #4F46E5).
+
 ## Layout
 - **Desktop (≥ 920 px):** två kolumner. Vänster: formulär. Höger: visualisering och hjälp, `position: sticky` så att den syns medan man fyller i.
 - **Mobil:** en kolumn, med visualiseringen överst och formuläret under.

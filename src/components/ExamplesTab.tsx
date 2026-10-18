@@ -12,22 +12,30 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
     {
       key: "maxTime" as ExampleKey,
       icon: Clock,
-      color: "blue",
+      // Fullständiga klassnamn så att Tailwind 3 hittar dem
+      cardClass: "border-blue-200 hover:border-blue-400",
+      iconClass: "bg-blue-100 text-blue-600",
     },
     {
       key: "maxMoney" as ExampleKey,
       icon: DollarSign,
-      color: "green",
+      // Fullständiga klassnamn så att Tailwind 3 hittar dem
+      cardClass: "border-green-200 hover:border-green-400",
+      iconClass: "bg-green-100 text-green-600",
     },
     {
       key: "balanced" as ExampleKey,
       icon: Heart,
-      color: "purple",
+      // Fullständiga klassnamn så att Tailwind 3 hittar dem
+      cardClass: "border-purple-200 hover:border-purple-400",
+      iconClass: "bg-purple-100 text-purple-600",
     },
     {
       key: "singleParent" as ExampleKey,
       icon: User,
-      color: "pink",
+      // Fullständiga klassnamn så att Tailwind 3 hittar dem
+      cardClass: "border-pink-200 hover:border-pink-400",
+      iconClass: "bg-pink-100 text-pink-600",
     },
   ];
 
@@ -44,7 +52,7 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {exampleConfigs.map(({ key, icon: Icon, color }) => {
+        {exampleConfigs.map(({ key, icon: Icon, cardClass, iconClass }) => {
           const example = EXAMPLES[key];
           const firstParent = example.parents[0];
           const totalDays = getTotalDaysFromPeriods(firstParent.periods);
@@ -54,11 +62,11 @@ const ExamplesTab: React.FC<ExamplesTabProps> = ({ onLoadExample }) => {
             <button
               key={key}
               onClick={() => onLoadExample(key)}
-              className={`p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all text-left border-2 border-${color}-200 hover:border-${color}-400`}
+              className={`p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all text-left border-2 ${cardClass}`}
             >
               <div className="flex items-start gap-4">
                 <div
-                  className={`w-12 h-12 rounded-lg bg-${color}-100 flex items-center justify-center text-${color}-600 flex-shrink-0`}
+                  className={`w-12 h-12 rounded-lg ${iconClass} flex items-center justify-center flex-shrink-0`}
                 >
                   <Icon size={24} />
                 </div>
