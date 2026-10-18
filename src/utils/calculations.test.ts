@@ -63,8 +63,17 @@ describe("calculateSGI", () => {
   });
 
   // A7: SGI är årsinkomsten (högst 592 000), inte inkomsten × 0,97.
-  test.skip("A7: lön 35 000 kr/mån ger SGI 420 000 kr", () => {
+  test("A7: lön 35 000 kr/mån ger SGI 420 000 kr", () => {
     expect(calculateSGI(35000)).toBe(420000);
+  });
+
+  test("lön 49 333 kr/mån ger SGI 591 996 kr (under taket)", () => {
+    expect(calculateSGI(49333)).toBe(591996);
+  });
+
+  test("årsinkomst strax över och under 14 200 kr", () => {
+    expect(calculateSGI(1200)).toBe(14400); // 14 400 kr/år
+    expect(calculateSGI(1180)).toBe(0); // 14 160 kr/år
   });
 });
 
@@ -81,13 +90,30 @@ describe("calculateDailyBenefit", () => {
     expect(calculateDailyBenefit(50000)).toBe(250);
   });
 
-  test("lön 35 000 kr/mån ger ca 893 kr/dag", () => {
-    expect(calculateDailyBenefit(calculateSGI(35000))).toBeCloseTo(893, 0);
+  test("lön 35 000 kr/mån ger 893 kr/dag", () => {
+    expect(calculateDailyBenefit(calculateSGI(35000))).toBe(893);
   });
 
   // A7: dagersättning = round(SGI × 0,97 × 0,8 / 365), i hela kronor.
-  test.skip("A7: SGI 420 000 kr ger exakt 893 kr/dag", () => {
+  test("A7: SGI 420 000 kr ger exakt 893 kr/dag", () => {
+    // 420 000 × 0,97 × 0,8 / 365 = 892,93
     expect(calculateDailyBenefit(420000)).toBe(893);
+  });
+
+  test.each([
+    // [SGI, SGI × 0,97 × 0,8 / 365, förväntat]
+    [591996, "1 258,60", 1259],
+    [360000, "765,37", 765],
+    [240000, "510,25", 510],
+    [14400, "30,61", 250], // under grundnivån
+  ])("SGI %i ger %s → %i kr/dag", (sgi, _exact, expected) => {
+    expect(calculateDailyBenefit(sgi as number)).toBe(expected);
+  });
+
+  test("dagersättningen är alltid hela kronor", () => {
+    for (let salary = 0; salary <= 70000; salary += 1234) {
+      expect(Number.isInteger(calculateDailyBenefit(calculateSGI(salary)))).toBe(true);
+    }
   });
 });
 

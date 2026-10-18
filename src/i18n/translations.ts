@@ -228,7 +228,7 @@ export const translations: Record<Language, Translations> = {
     infoGuideTitle: "Snabbguide",
     infoCard1Title: "SGI - Sjukpenninggrundande inkomst",
     infoCard1Content:
-      "Din SGI beräknas som 97% av din årsinkomst och avgör hur mycket föräldrapenning du får. Taket är ca 573 000 kr/år (2025).",
+      "SGI är din årsinkomst av arbete, högst 592 000 kr (2026). Föräldrapenningen blir ca 80 % av SGI, högst 1 259 kr/dag.",
     infoCard2Title: "Reserverade dagar",
     infoCard2Content:
       "90 dagar per förälder är reserverade och kan inte överföras. Detta uppmuntrar båda att ta ledigt. Övriga 300 dagar kan ni dela fritt.",
@@ -366,7 +366,7 @@ export const translations: Record<Language, Translations> = {
     infoGuideTitle: "Quick Guide",
     infoCard1Title: "SGI - Sickness Benefit Qualifying Income",
     infoCard1Content:
-      "Your SGI is calculated as 97% of your annual income and determines how much parental benefit you receive. The cap is approximately 573,000 SEK/year (2025).",
+      "SGI is your annual income from work, at most 592,000 SEK (2026). Parental benefit is about 80% of your SGI, at most 1,259 SEK/day.",
     infoCard2Title: "Reserved days",
     infoCard2Content:
       "90 days per parent are reserved and cannot be transferred. This encourages both to take leave. The remaining 300 days can be shared freely.",

@@ -31,33 +31,29 @@ const DEFAULT_TOP_UP_DAYS = 360;
 const WORK_DAYS_PER_WEEK = 5;
 
 /**
- * Beräknar SGI (Sjukpenninggrundande inkomst)
- * Inkluderar tak och golv enligt FK:s regler
+ * SGI (sjukpenninggrundande inkomst) = årsinkomsten av arbete, högst SGI-taket.
+ * Under lägsta SGI blir den 0 (grundnivå).
  */
 export const calculateSGI = (monthlySalary: number): number => {
   const yearlyIncome = monthlySalary * 12;
-  // A7: sgiFactor hör hemma i dagersättningsformeln, inte i SGI.
-  const sgi = yearlyIncome * BENEFIT.sgiFactor;
 
-  // Applicera tak och golv
-  if (sgi < SGI.min) {
-    return 0; // Under minsta SGI = grundnivå
+  if (yearlyIncome < SGI.min) {
+    return 0;
   }
 
-  return Math.min(sgi, SGI.max); // Takad vid max SGI
+  return Math.min(yearlyIncome, SGI.max);
 };
 
 /**
- * Beräknar dagersättning från FK
- * Max: RULES.benefit.maxDaily (vid max SGI)
- * Min: RULES.benefit.basicDaily (grundnivå)
+ * Dagersättning på sjukpenningnivå = round(SGI × 0,97 × 0,80 / 365), i hela kronor,
+ * inom grundnivån och högsta beloppet. Ingen SGI ger grundnivån.
  */
 export const calculateDailyBenefit = (sgi: number): number => {
   if (sgi === 0) {
-    return BENEFIT.basicDaily; // Grundnivå om ingen SGI
+    return BENEFIT.basicDaily;
   }
 
-  const daily = (sgi * BENEFIT.rate) / 365;
+  const daily = Math.round((sgi * BENEFIT.sgiFactor * BENEFIT.rate) / 365);
   return Math.min(Math.max(daily, BENEFIT.basicDaily), BENEFIT.maxDaily);
 };
 
